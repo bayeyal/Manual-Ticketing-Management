@@ -1,5 +1,36 @@
 # Essential Git Commands
 
+## Quick Reference for Daily Work
+
+### Starting Your Day
+```bash
+# Get latest changes from GitHub
+git pull
+```
+
+### Making Changes
+```bash
+# Add all changes
+git add .
+
+# Commit changes with a message
+git commit -m "Description of changes"
+
+# Push changes to GitHub
+git push
+```
+
+### If You Get Conflicts
+```bash
+# Pull latest changes (might show conflicts)
+git pull
+
+# After fixing conflicts in your code
+git add .
+git commit -m "Resolve conflicts"
+git push
+```
+
 ## Daily Workflow Commands
 
 ### 1. Starting Your Work

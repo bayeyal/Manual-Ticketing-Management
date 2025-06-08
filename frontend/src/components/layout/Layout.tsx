@@ -12,12 +12,14 @@ import {
   ListItemText,
   Toolbar,
   Typography,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Assignment as ProjectsIcon,
   Task as TasksIcon,
+  People as UsersIcon,
   ExitToApp as LogoutIcon,
 } from '@mui/icons-material';
 import { useAppDispatch } from '../../store';
@@ -43,6 +45,7 @@ const Layout: React.FC = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Projects', icon: <ProjectsIcon />, path: '/projects' },
     { text: 'Tasks', icon: <TasksIcon />, path: '/tasks' },
+    { text: 'Users', icon: <UsersIcon />, path: '/users' },
   ];
 
   const drawer = (
@@ -89,9 +92,16 @@ const Layout: React.FC = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Accessibility Management
           </Typography>
+          <Button
+            color="inherit"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+          >
+            Logout
+          </Button>
         </Toolbar>
       </AppBar>
       <Box

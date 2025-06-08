@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchProjects, deleteProject, createProject } from '../store/slices/projectsSlice';
+import { fetchUsers } from '../store/slices/usersSlice';
 import { CreateProjectDto } from '../types/project';
+import { UserRole } from '../types/user';
 import {
   Box,
   Container,
@@ -26,9 +28,16 @@ import {
   Grid,
   TextField,
   MenuItem,
+  Link,
+  FormControl,
+  InputLabel,
+  Select,
+  Chip,
+  OutlinedInput,
+  FormHelperText,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { useForm, Controller, FieldValues, ControllerRenderProps, FieldErrors, ControllerFieldState } from 'react-hook-form';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { useForm, Controller } from 'react-hook-form';
 import { AuditType, AuditLevel } from '../types/project';
 
 type ProjectFormData = {
@@ -40,18 +49,16 @@ type ProjectFormData = {
   startDate: string;
   endDate: string;
   dueDate: string;
-}
-
-type FieldProps<T extends keyof ProjectFormData> = {
-  field: ControllerRenderProps<ProjectFormData, T>;
-  fieldState: ControllerFieldState;
+  projectAdminId: number;
+  assignedUserIds: number[];
 }
 
 const Projects: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { projects, loading, error } = useAppSelector((state) => state.projects);
-  const { user } = useAppSelector((state) => state.auth);
+  const { users } = useAppSelector((state) => state.users);
+  const { user: currentUser } = useAppSelector((state) => state.auth);
   const [open, setOpen] = React.useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [projectToDelete, setProjectToDelete] = React.useState<number | null>(null);
@@ -59,10 +66,23 @@ const Projects: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchProjects());
+    dispatch(fetchUsers());
   }, [dispatch]);
 
   const handleOpen = () => {
     setOpen(true);
+    reset({
+      name: '',
+      description: '',
+      url: '',
+      auditType: AuditType.WCAG_2_1,
+      auditLevel: AuditLevel.AA,
+      startDate: '',
+      endDate: '',
+      dueDate: '',
+      projectAdminId: currentUser?.id || 0,
+      assignedUserIds: []
+    });
   };
 
   const handleClose = () => {
@@ -92,9 +112,7 @@ const Projects: React.FC = () => {
     try {
       const projectData: CreateProjectDto = {
         ...data,
-        projectAdminId: user?.id || 0,
-        auditorIds: [],
-        assignedUserIds: []
+        auditorIds: []
       };
       await dispatch(createProject(projectData));
       handleClose();
@@ -106,6 +124,14 @@ const Projects: React.FC = () => {
   const handleProjectClick = (projectId: number) => {
     navigate(`/projects/${projectId}`);
   };
+
+  // Filter users who can be project admins (Super Admin or Project Admin role)
+  const eligibleProjectAdmins = users.filter(user => 
+    user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROJECT_ADMIN
+  );
+
+  // Filter users who can be assigned to projects (User role)
+  const assignableUsers = users.filter(user => user.role === UserRole.USER);
 
   if (loading) {
     return (
@@ -128,10 +154,28 @@ const Projects: React.FC = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center" mb={3}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/')}
+            sx={{ mr: 2 }}
+          >
+            Back to Dashboard
+          </Button>
           <Typography variant="h4" component="h1">
             Projects
           </Typography>
+        </Box>
+
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => navigate('/')}
+            sx={{ textDecoration: 'none' }}
+          >
+            Dashboard
+          </Link>
           <Button
             variant="contained"
             color="primary"
@@ -148,6 +192,8 @@ const Projects: React.FC = () => {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>URL</TableCell>
+                <TableCell>Project Admin</TableCell>
+                <TableCell>Assigned Users</TableCell>
                 <TableCell>Audit Type</TableCell>
                 <TableCell>Audit Level</TableCell>
                 <TableCell>Start Date</TableCell>
@@ -174,6 +220,19 @@ const Projects: React.FC = () => {
                     >
                       {project.url}
                     </a>
+                  </TableCell>
+                  <TableCell>
+                    {users.find(u => u.id === project.projectAdmin?.id)?.firstName} {users.find(u => u.id === project.projectAdmin?.id)?.lastName}
+                  </TableCell>
+                  <TableCell>
+                    {project.assignedUsers?.map(user => (
+                      <Chip
+                        key={user.id}
+                        label={`${user.firstName} ${user.lastName}`}
+                        size="small"
+                        sx={{ mr: 0.5, mb: 0.5 }}
+                      />
+                    ))}
                   </TableCell>
                   <TableCell>{project.auditType}</TableCell>
                   <TableCell>{project.auditLevel}</TableCell>
@@ -258,6 +317,67 @@ const Projects: React.FC = () => {
                         error={!!error}
                         helperText={error?.message}
                       />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Controller
+                    name="projectAdminId"
+                    control={control}
+                    rules={{ required: 'Project admin is required' }}
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl fullWidth error={!!error}>
+                        <InputLabel>Project Admin</InputLabel>
+                        <Select
+                          {...field}
+                          label="Project Admin"
+                        >
+                          {eligibleProjectAdmins.map((admin) => (
+                            <MenuItem key={admin.id} value={admin.id}>
+                              {admin.firstName} {admin.lastName} ({admin.role})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {error && <FormHelperText>{error.message}</FormHelperText>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Controller
+                    name="assignedUserIds"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Assigned Users</InputLabel>
+                        <Select
+                          {...field}
+                          multiple
+                          input={<OutlinedInput label="Assigned Users" />}
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => {
+                                const user = assignableUsers.find(u => u.id === value);
+                                return (
+                                  <Chip
+                                    key={value}
+                                    label={`${user?.firstName} ${user?.lastName}`}
+                                    size="small"
+                                  />
+                                );
+                              })}
+                            </Box>
+                          )}
+                        >
+                          {assignableUsers.map((user) => (
+                            <MenuItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     )}
                   />
                 </Grid>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import {
   Box,
@@ -11,6 +11,15 @@ import {
   Grid,
   Chip,
   Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  InputLabel,
+  FormControl,
+  OutlinedInput,
+  FormHelperText,
+  MenuItem,
+  Select,
 } from '@mui/material';
 import { Task, TaskStatus, TaskPriority } from '../types/task';
 import { fetchTasks, createTask, updateTask, deleteTask, sendTaskMessage } from '../store/slices/tasksSlice';
@@ -18,15 +27,39 @@ import { fetchProjects } from '../store/slices/projectsSlice';
 import { fetchUsers } from '../store/slices/usersSlice';
 import TaskAccordion from '../components/TaskAccordion';
 import TaskForm from '../components/TaskForm';
+import { useForm, Controller, ControllerRenderProps } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+
+type TaskFormData = {
+  projectId: number;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  auditorIds: number[];
+};
 
 const Tasks: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { projects } = useAppSelector((state) => state.projects);
   const { tasks, loading, error } = useAppSelector((state) => state.tasks);
   const { users } = useAppSelector((state) => state.users);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [open, setOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const { control, handleSubmit, reset, watch } = useForm<TaskFormData>();
+
+  const formProjectId = watch('projectId');
+
+  // Get assigned users for the selected project
+  const assignedUsers = useMemo(() => {
+    if (!formProjectId) return [];
+    const project = projects.find(p => p.id === formProjectId);
+    return project?.assignedUsers || [];
+  }, [formProjectId, projects]);
 
   useEffect(() => {
     dispatch(fetchProjects());
@@ -34,13 +67,13 @@ const Tasks: React.FC = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (selectedProjectId) {
-      dispatch(fetchTasks(selectedProjectId));
+    if (formProjectId) {
+      dispatch(fetchTasks(formProjectId));
     }
-  }, [dispatch, selectedProjectId]);
+  }, [dispatch, formProjectId]);
 
   const handleProjectChange = (projectId: number) => {
-    setSelectedProjectId(projectId);
+    reset({ ...watch(), projectId });
   };
 
   const handleAddTask = () => {
@@ -65,8 +98,8 @@ const Tasks: React.FC = () => {
     try {
       if (selectedTask) {
         await dispatch(updateTask({ id: selectedTask.id, task: data }));
-      } else if (selectedProjectId) {
-        await dispatch(createTask({ ...data, projectId: selectedProjectId }));
+      } else if (formProjectId) {
+        await dispatch(createTask({ ...data, projectId: formProjectId }));
       }
       setIsTaskDialogOpen(false);
     } catch (error) {
@@ -79,6 +112,19 @@ const Tasks: React.FC = () => {
       await dispatch(sendTaskMessage({ taskId, content, mentionedUserId }));
     } catch (error) {
       console.error('Error sending message:', error);
+    }
+  };
+
+  const onSubmit = async (data: TaskFormData) => {
+    try {
+      if (selectedTask) {
+        await dispatch(updateTask({ id: selectedTask.id, task: data }));
+      } else {
+        await dispatch(createTask(data));
+      }
+      setOpen(false);
+    } catch (error) {
+      console.error('Error saving task:', error);
     }
   };
 
@@ -118,7 +164,7 @@ const Tasks: React.FC = () => {
                       key={project.id}
                       label={project.name}
                       onClick={() => handleProjectChange(project.id)}
-                      color={selectedProjectId === project.id ? 'primary' : 'default'}
+                      color={formProjectId === project.id ? 'primary' : 'default'}
                       sx={{ mr: 1 }}
                     />
                   ))}
@@ -127,7 +173,7 @@ const Tasks: React.FC = () => {
                   Add Task
                 </Button>
               </Box>
-              {selectedProjectId ? (
+              {formProjectId ? (
                 <TaskAccordion
                   tasks={tasks}
                   users={users}
@@ -160,6 +206,62 @@ const Tasks: React.FC = () => {
             onCancel={() => setIsTaskDialogOpen(false)}
           />
         </Box>
+      </Dialog>
+
+      {/* Create Task Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Create New Task</DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 2 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Controller
+                  name="auditorIds"
+                  control={control}
+                  render={({ field }: { field: ControllerRenderProps<TaskFormData, 'auditorIds'> }) => (
+                    <FormControl fullWidth>
+                      <InputLabel>Auditors</InputLabel>
+                      <Select
+                        {...field}
+                        multiple
+                        input={<OutlinedInput label="Auditors" />}
+                        renderValue={(selected: number[]) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value: number) => {
+                              const user = assignedUsers.find(u => u.id === value);
+                              return (
+                                <Chip
+                                  key={value}
+                                  label={`${user?.firstName} ${user?.lastName}`}
+                                  size="small"
+                                />
+                              );
+                            })}
+                          </Box>
+                        )}
+                      >
+                        {assignedUsers.map((user) => (
+                          <MenuItem key={user.id} value={user.id}>
+                            {user.firstName} {user.lastName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        Only users assigned to the project can be selected as auditors
+                      </FormHelperText>
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit(onSubmit)} variant="contained">
+            Create Task
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );

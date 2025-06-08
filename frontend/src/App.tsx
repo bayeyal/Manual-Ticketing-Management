@@ -11,9 +11,14 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import EditProject from './pages/EditProject';
+import Users from './pages/Users';
+import UserDetails from './pages/UserDetails';
 import PrivateRoute from './components/PrivateRoute';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchUser } from './store/slices/authSlice';
+import EditUser from './pages/EditUser';
+import Tasks from './pages/Tasks';
+import Layout from './components/layout/Layout';
 
 function App() {
   const dispatch = useAppDispatch();
@@ -38,34 +43,19 @@ function App() {
             path="/"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <Layout />
               </PrivateRoute>
             }
-          />
-          <Route
-            path="/projects"
-            element={
-              <PrivateRoute>
-                <Projects />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/projects/:id"
-            element={
-              <PrivateRoute>
-                <ProjectDetails />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/projects/:id/edit"
-            element={
-              <PrivateRoute>
-                <EditProject />
-              </PrivateRoute>
-            }
-          />
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDetails />} />
+            <Route path="projects/:id/edit" element={<EditProject />} />
+            <Route path="users" element={<Users />} />
+            <Route path="users/:id" element={<UserDetails />} />
+            <Route path="users/:id/edit" element={<EditUser />} />
+            <Route path="tasks" element={<Tasks />} />
+          </Route>
         </Routes>
       </Router>
     </ThemeProvider>

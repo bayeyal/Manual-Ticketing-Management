@@ -9,7 +9,11 @@ export enum UserRole {
 
 export interface User extends BaseEntity, BaseUser {
   id: number;
-  role: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  assignedProjectIds?: number[];
   avatar?: string;
 }
 
@@ -24,4 +28,5 @@ export interface RegisterDto {
   email: string;
   password: string;
   role: UserRole;
+  assignedProjectIds?: number[];
 } 

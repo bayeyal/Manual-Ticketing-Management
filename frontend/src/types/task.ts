@@ -6,7 +6,8 @@ export enum TaskStatus {
   NEW = 'NEW',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
-  BLOCKED = 'BLOCKED'
+  BLOCKED = 'BLOCKED',
+  ON_HOLD = 'ON_HOLD'
 }
 
 export enum TaskSeverity {
@@ -31,31 +32,27 @@ export interface TaskMessage {
   mentionedUser?: User;
 }
 
-export interface Task {
+export interface Task extends BaseEntity {
   id: number;
   title: string;
   description: string;
+  status: TaskStatus;
+  severity: TaskSeverity;
+  priority: TaskPriority;
   wcagCriteria: string;
   wcagVersion: string;
   conformanceLevel: string;
-  defectSummary?: string;
-  recommendation?: string;
-  userImpact?: string;
-  comments?: string;
-  disabilityType?: string;
+  defectSummary: string;
+  recommendation: string;
+  userImpact: string;
+  comments: string;
+  disabilityType: string;
   pageUrl: string;
-  severity: TaskSeverity;
-  status: TaskStatus;
   screenshot?: string;
-  assignedTo?: User;
-  assignedToId?: number;
-  auditor?: User;
-  auditorId?: number;
-  priority: TaskPriority;
   dueDate: string;
   projectId: number;
-  createdAt: string;
-  updatedAt: string;
+  assignedTo?: User;
+  auditor?: User;
   messages?: TaskMessage[];
 }
 

@@ -35,6 +35,7 @@ export interface Project {
   status: ProjectStatus;
   projectAdmin: User;
   assignedUsers: User[];
+  assignedUserIds?: number[];
   tasks: Task[];
   createdAt: string;
   updatedAt: string;

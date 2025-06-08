@@ -62,9 +62,31 @@ const Dashboard: React.FC = () => {
           Dashboard
         </Typography>
 
+        <Box display="flex" gap={2} mb={3}>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => navigate('/projects')}
+            sx={{ textDecoration: 'none' }}
+          >
+            Projects
+          </Link>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => navigate('/users')}
+            sx={{ textDecoration: 'none' }}
+          >
+            Users
+          </Link>
+        </Box>
+
         <Grid container spacing={3}>
           <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 3, textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/projects')}>
+            <Paper 
+              sx={{ p: 3, textAlign: 'center', cursor: 'pointer' }} 
+              onClick={() => navigate('/projects')}
+            >
               <Typography variant="h6" gutterBottom>
                 Total Projects
               </Typography>

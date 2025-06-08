@@ -173,18 +173,36 @@ const ProjectDetails: React.FC = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" component="div">Project Admin</Typography>
+                  <Typography variant="body1" component="div">
+                    {project.projectAdmin ? `${project.projectAdmin.firstName} ${project.projectAdmin.lastName}` : 'Not assigned'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" component="div">Assigned Users</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                    {project.assignedUsers && project.assignedUsers.length > 0 ? (
+                      project.assignedUsers.map(user => (
+                        <Chip
+                          key={user.id}
+                          label={`${user.firstName} ${user.lastName}`}
+                          size="small"
+                        />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No users assigned
+                      </Typography>
+                    )}
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle2" component="div">Audit Type</Typography>
                   <Typography variant="body1" component="div">{project.auditType}</Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Typography variant="subtitle2" component="div">Audit Level</Typography>
                   <Typography variant="body1" component="div">{project.auditLevel}</Typography>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" component="div">Project Admin</Typography>
-                  <Typography variant="body1" component="div">
-                    {project.projectAdmin ? `${project.projectAdmin.firstName} ${project.projectAdmin.lastName}` : 'Not assigned'}
-                  </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Typography variant="subtitle2" component="div">Start Date</Typography>
