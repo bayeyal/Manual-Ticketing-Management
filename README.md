@@ -9,6 +9,7 @@ A platform for managing accessibility tickets and audits.
 - Task tracking
 - Audit management
 - Real-time updates
+- Git integration working! 🎉
 
 ## Tech Stack
 
