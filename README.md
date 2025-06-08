@@ -1,16 +1,14 @@
-# Manual Accessibility Ticketing Platform
+# Manual Ticketing Management Platform
 
-A web application for managing digital accessibility manual testing projects.
+A platform for managing accessibility tickets and audits.
 
 ## Features
 
-- User authentication and role-based access control
-- Project management with WCAG compliance tracking
-- Task management for accessibility issues
-- Real-time communication between auditors
-- Screenshot capture and management
-- Progress tracking and reporting
-- Email notifications
+- User authentication and authorization
+- Project management
+- Task tracking
+- Audit management
+- Real-time updates
 
 ## Tech Stack
 
@@ -19,71 +17,57 @@ A web application for managing digital accessibility manual testing projects.
 - Database: PostgreSQL
 - Authentication: JWT
 
-## Project Structure
+## Getting Started
 
+### Prerequisites
+
+- Node.js
+- PostgreSQL
+- Git
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/YOUR-USERNAME/Manual-Ticketing-Management.git
+cd Manual-Ticketing-Management
 ```
-.
-├── frontend/          # React frontend application
-├── backend/           # NestJS backend application
-└── requirements.md    # Project requirements and specifications
+
+2. Install dependencies
+```bash
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
 ```
 
-## Prerequisites
+3. Set up environment variables
+- Copy `.env.example` to `.env` in the backend directory
+- Update the database credentials and other settings
 
-- Node.js (v18 or higher)
-- PostgreSQL (v14 or higher)
-- npm or yarn
+4. Start the development servers
+```bash
+# Start backend (from backend directory)
+npm run start:dev
 
-## Setup Instructions
-
-### Backend Setup
-
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure environment variables:
-   - Copy `.env.example` to `.env`
-   - Update database credentials and other configurations
-
-4. Run database migrations:
-   ```bash
-   npm run migration:run
-   ```
-
-5. Start the development server:
-   ```bash
-   npm run start:dev
-   ```
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm start
-   ```
+# Start frontend (from frontend directory)
+npm start
+```
 
 ## Development
 
-- Backend API will run on: http://localhost:3000
-- Frontend will run on: http://localhost:3001
+- Backend runs on: http://localhost:3000
+- Frontend runs on: http://localhost:3001
+
+## Contributing
+
+1. Create a new branch for your feature
+2. Make your changes
+3. Submit a pull request
 
 ## License
 
-MIT 
+This project is licensed under the MIT License. 
