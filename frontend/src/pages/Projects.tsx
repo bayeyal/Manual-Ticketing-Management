@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchProjects, deleteProject, createProject } from '../store/slices/projectsSlice';
@@ -35,6 +35,7 @@ import {
   Chip,
   OutlinedInput,
   FormHelperText,
+  LinearProgress,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
@@ -199,6 +200,7 @@ const Projects: React.FC = () => {
                 <TableCell>Start Date</TableCell>
                 <TableCell>End Date</TableCell>
                 <TableCell>Due Date</TableCell>
+                <TableCell>Progress</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -239,6 +241,18 @@ const Projects: React.FC = () => {
                   <TableCell>{new Date(project.startDate).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(project.endDate).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(project.dueDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={project.progress || 0}
+                        sx={{ height: 10, borderRadius: 5, flexGrow: 1 }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: 35 }}>
+                        {project.progress || 0}%
+                      </Typography>
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <IconButton
                       size="small"

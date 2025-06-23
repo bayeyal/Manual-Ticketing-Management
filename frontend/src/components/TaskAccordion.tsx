@@ -54,12 +54,12 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
         return 'default';
       case TaskStatus.IN_PROGRESS:
         return 'primary';
+      case TaskStatus.REVIEW:
+        return 'warning';
       case TaskStatus.COMPLETED:
         return 'success';
       case TaskStatus.BLOCKED:
         return 'error';
-      case TaskStatus.ON_HOLD:
-        return 'warning';
       default:
         return 'default';
     }
@@ -148,7 +148,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                           title={`${user.firstName} ${user.lastName} commented`}
                         >
                           <Avatar
-                            src={user.avatar}
+                            src={user.avatar || undefined}
                             sx={{ width: 24, height: 24 }}
                           >
                             {user.firstName[0]}
@@ -253,9 +253,13 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                 Page URL
               </Typography>
               <Typography variant="body1" paragraph>
-                <a href={task.pageUrl} target="_blank" rel="noopener noreferrer">
-                  {task.pageUrl}
-                </a>
+                {task.page ? (
+                  <a href={task.page.url} target="_blank" rel="noopener noreferrer">
+                    {task.page.url}
+                  </a>
+                ) : (
+                  'No page assigned'
+                )}
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -266,7 +270,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                   {task.assignedTo ? (
                     <Tooltip title={`Assigned to: ${task.assignedTo.firstName} ${task.assignedTo.lastName}`}>
                       <Chip
-                        avatar={<Avatar src={task.assignedTo.avatar}>{task.assignedTo.firstName[0]}</Avatar>}
+                        avatar={<Avatar src={task.assignedTo.avatar || undefined}>{task.assignedTo.firstName[0]}</Avatar>}
                         label={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
                         size="small"
                       />
@@ -282,7 +286,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                   {task.auditor ? (
                     <Tooltip title={`Auditor: ${task.auditor.firstName} ${task.auditor.lastName}`}>
                       <Chip
-                        avatar={<Avatar src={task.auditor.avatar}>{task.auditor.firstName[0]}</Avatar>}
+                        avatar={<Avatar src={task.auditor.avatar || undefined}>{task.auditor.firstName[0]}</Avatar>}
                         label={`${task.auditor.firstName} ${task.auditor.lastName}`}
                         size="small"
                       />
@@ -324,7 +328,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Avatar
-                        src={message.user.avatar}
+                        src={message.user.avatar || undefined}
                         sx={{ width: 24, height: 24, mr: 1 }}
                       >
                         {message.user.firstName[0]}

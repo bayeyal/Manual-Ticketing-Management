@@ -1,308 +1,494 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import {
-  Box,
-  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
+  TextField,
   Grid,
-  MenuItem,
   FormControl,
   InputLabel,
   Select,
+  MenuItem,
   FormHelperText,
+  Box,
+  CircularProgress,
 } from '@mui/material';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
-import { Task, TaskStatus, TaskPriority, TaskSeverity } from '../types/task';
+import { TaskSeverity, TaskStatus, TaskPriority } from '../types/task';
 import { User } from '../types/user';
+import { Task } from '../types/task';
 import { Project } from '../types/project';
+import { Page } from '../types/page';
 
 interface TaskFormProps {
   task?: Task;
   users: User[];
-  project?: Project;
-  onSubmit: (data: Partial<Task>) => void;
+  project: Project;
+  pages: Page[];
+  selectedPageId?: number;
+  onSubmit: (data: Partial<Task>) => Promise<void>;
   onCancel: () => void;
+  open?: boolean;
+  onClose?: () => void;
 }
 
-interface TaskFormData {
-  title: string;
-  description: string;
-  wcagCriteria: string;
-  wcagVersion: string;
-  conformanceLevel: string;
-  defectSummary?: string;
-  recommendation?: string;
-  userImpact?: string;
-  comments?: string;
-  disabilityType?: string;
-  pageUrl: string;
-  severity: TaskSeverity;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assignedToId: number | null;
-  auditorId: number | null;
-  dueDate: string;
-}
+const TaskForm: React.FC<TaskFormProps> = ({
+  task,
+  users,
+  project,
+  pages,
+  selectedPageId,
+  onSubmit,
+  onCancel,
+  open = true,
+  onClose,
+}) => {
+  const [loading, setLoading] = useState(false);
 
-const TaskForm: React.FC<TaskFormProps> = ({ task, users, project, onSubmit, onCancel }) => {
-  const { control, handleSubmit, formState: { errors } } = useForm<TaskFormData>({
+  const { control, handleSubmit, reset, watch } = useForm<Partial<Task>>({
     defaultValues: {
       title: task?.title || '',
       description: task?.description || '',
       wcagCriteria: task?.wcagCriteria || '',
       wcagVersion: task?.wcagVersion || '2.1',
-      conformanceLevel: task?.conformanceLevel || 'A',
+      conformanceLevel: task?.conformanceLevel || 'AA',
       defectSummary: task?.defectSummary || '',
       recommendation: task?.recommendation || '',
       userImpact: task?.userImpact || '',
       comments: task?.comments || '',
       disabilityType: task?.disabilityType || '',
-      pageUrl: task?.pageUrl || '',
+      screenshot: task?.screenshot || '',
       severity: task?.severity || TaskSeverity.MODERATE,
       status: task?.status || TaskStatus.NEW,
       priority: task?.priority || TaskPriority.MEDIUM,
-      assignedToId: task?.assignedTo?.id || null,
-      auditorId: task?.auditor?.id || null,
+      assignedTo: task?.assignedTo,
+      auditor: task?.auditor,
+      page: task?.page || (selectedPageId ? pages.find(p => p.id === selectedPageId) : undefined),
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    },
+    }
   });
 
-  // Filter users based on project relationships
-  const projectUsers = React.useMemo(() => {
-    if (!project) return users;
-    
-    const projectUserIds = new Set([
-      project.projectAdmin?.id,
-      ...(project.assignedUsers?.map((user: User) => user.id) || []),
-      ...(project.projectAdmin?.id ? [project.projectAdmin.id] : [])
-    ].filter(Boolean));
+  // Reset form when selectedPageId changes
+  useEffect(() => {
+    if (selectedPageId && pages.length > 0) {
+      const selectedPage = pages.find(p => p.id === selectedPageId);
+      if (selectedPage) {
+        reset({
+          ...watch(),
+          page: selectedPage
+        });
+      }
+    }
+  }, [selectedPageId, pages, reset, watch]);
 
-    return users.filter(user => projectUserIds.has(user.id));
-  }, [users, project]);
+  const handleFormSubmit = async (data: Partial<Task>) => {
+    setLoading(true);
+    try {
+      console.log('TaskForm: Submitting task data:', data);
+      await onSubmit(data);
+      console.log('TaskForm: Task submission successful');
+      reset();
+      if (onClose) onClose();
+    } catch (error) {
+      console.error('TaskForm: Error submitting task:', error);
+      // Re-throw the error so the parent component can handle it
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const onSubmitForm: SubmitHandler<TaskFormData> = (data) => {
-    // Convert null values to undefined for the API
-    const submitData = {
-      ...data,
-      assignedToId: data.assignedToId || undefined,
-      auditorId: data.auditorId || undefined,
-      severity: data.severity.toUpperCase() as TaskSeverity,
-      status: data.status.toUpperCase() as TaskStatus,
-      priority: data.priority.toUpperCase() as TaskPriority,
-    };
-    onSubmit(submitData);
+  const handleClose = () => {
+    if (loading) return; // Prevent closing while loading
+    reset();
+    if (onClose) onClose();
+    onCancel();
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmitForm)}>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Controller
-            name="title"
-            control={control}
-            rules={{ required: 'Title is required' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Title"
-                fullWidth
-                error={!!errors.title}
-                helperText={errors.title?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12}>
-          <Controller
-            name="description"
-            control={control}
-            rules={{ required: 'Description is required' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Description"
-                fullWidth
-                multiline
-                rows={4}
-                error={!!errors.description}
-                helperText={errors.description?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="wcagCriteria"
-            control={control}
-            rules={{ required: 'WCAG Criteria is required' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="WCAG Criteria"
-                fullWidth
-                error={!!errors.wcagCriteria}
-                helperText={errors.wcagCriteria?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="conformanceLevel"
-            control={control}
-            rules={{ required: 'Conformance Level is required' }}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.conformanceLevel}>
-                <InputLabel>Conformance Level</InputLabel>
-                <Select {...field} label="Conformance Level">
-                  <MenuItem value="A">Level A</MenuItem>
-                  <MenuItem value="AA">Level AA</MenuItem>
-                  <MenuItem value="AAA">Level AAA</MenuItem>
-                </Select>
-                {errors.conformanceLevel && (
-                  <FormHelperText>{errors.conformanceLevel.message}</FormHelperText>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {task ? 'Edit Task' : 'Create New Task'}
+        {loading && <CircularProgress size={20} sx={{ ml: 2 }} />}
+      </DialogTitle>
+      <DialogContent>
+        <Box component="form" onSubmit={handleSubmit(handleFormSubmit)} sx={{ mt: 2 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Controller
+                name="title"
+                control={control}
+                rules={{ required: 'Title is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Title"
+                    fullWidth
+                    error={!!error}
+                    helperText={error?.message}
+                    disabled={loading}
+                  />
                 )}
-              </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="severity"
-            control={control}
-            rules={{ required: 'Severity is required' }}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.severity}>
-                <InputLabel>Severity</InputLabel>
-                <Select {...field} label="Severity">
-                  {Object.values(TaskSeverity).map((severity) => (
-                    <MenuItem key={severity} value={severity}>
-                      {severity}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.severity && (
-                  <FormHelperText>{errors.severity.message}</FormHelperText>
-                )}
-              </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="priority"
-            control={control}
-            rules={{ required: 'Priority is required' }}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.priority}>
-                <InputLabel>Priority</InputLabel>
-                <Select {...field} label="Priority">
-                  {Object.values(TaskPriority).map((priority) => (
-                    <MenuItem key={priority} value={priority}>
-                      {priority}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.priority && (
-                  <FormHelperText>{errors.priority.message}</FormHelperText>
-                )}
-              </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="assignedToId"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth>
-                <InputLabel>Assigned To</InputLabel>
-                <Select {...field} label="Assigned To" value={field.value || ''}>
-                  <MenuItem value="">None</MenuItem>
-                  {projectUsers.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="auditorId"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth>
-                <InputLabel>Auditor</InputLabel>
-                <Select {...field} label="Auditor" value={field.value || ''}>
-                  <MenuItem value="">None</MenuItem>
-                  {projectUsers.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="pageUrl"
-            control={control}
-            rules={{ required: 'Page URL is required' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Page URL"
-                fullWidth
-                error={!!errors.pageUrl}
-                helperText={errors.pageUrl?.message}
               />
-            )}
-          />
-        </Grid>
+            </Grid>
 
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="dueDate"
-            control={control}
-            rules={{ required: 'Due Date is required' }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Due Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                error={!!errors.dueDate}
-                helperText={errors.dueDate?.message}
+            <Grid item xs={12}>
+              <Controller
+                name="description"
+                control={control}
+                rules={{ required: 'Description is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Description"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
               />
-            )}
-          />
-        </Grid>
+            </Grid>
 
-        <Grid item xs={12}>
-          <Box display="flex" justifyContent="flex-end" gap={2}>
-            <Button variant="outlined" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" color="primary">
-              {task ? 'Update Task' : 'Create Task'}
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
-    </form>
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="wcagCriteria"
+                control={control}
+                rules={{ required: 'WCAG Criteria is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="WCAG Criteria"
+                    fullWidth
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="wcagVersion"
+                control={control}
+                rules={{ required: 'WCAG Version is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>WCAG Version</InputLabel>
+                    <Select {...field} label="WCAG Version">
+                      <MenuItem value="2.0">WCAG 2.0</MenuItem>
+                      <MenuItem value="2.1">WCAG 2.1</MenuItem>
+                      <MenuItem value="2.2">WCAG 2.2</MenuItem>
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="conformanceLevel"
+                control={control}
+                rules={{ required: 'Conformance Level is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Conformance Level</InputLabel>
+                    <Select {...field} label="Conformance Level">
+                      <MenuItem value="A">A</MenuItem>
+                      <MenuItem value="AA">AA</MenuItem>
+                      <MenuItem value="AAA">AAA</MenuItem>
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="page"
+                control={control}
+                rules={{ required: 'Page is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Page</InputLabel>
+                    <Select 
+                      {...field} 
+                      label="Page"
+                      value={field.value?.id || ''}
+                      onChange={(e) => {
+                        const selectedPage = pages.find(p => p.id === e.target.value);
+                        field.onChange(selectedPage);
+                      }}
+                    >
+                      {pages.map((page) => (
+                        <MenuItem key={page.id} value={page.id}>
+                          {page.url}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="severity"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Severity</InputLabel>
+                    <Select {...field} label="Severity">
+                      <MenuItem value={TaskSeverity.LOW}>Low</MenuItem>
+                      <MenuItem value={TaskSeverity.MODERATE}>Moderate</MenuItem>
+                      <MenuItem value={TaskSeverity.HIGH}>High</MenuItem>
+                      <MenuItem value={TaskSeverity.CRITICAL}>Critical</MenuItem>
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Priority</InputLabel>
+                    <Select {...field} label="Priority">
+                      <MenuItem value={TaskPriority.LOW}>Low</MenuItem>
+                      <MenuItem value={TaskPriority.MEDIUM}>Medium</MenuItem>
+                      <MenuItem value={TaskPriority.HIGH}>High</MenuItem>
+                      <MenuItem value={TaskPriority.URGENT}>Urgent</MenuItem>
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Status</InputLabel>
+                    <Select {...field} label="Status">
+                      <MenuItem value={TaskStatus.NEW}>New</MenuItem>
+                      <MenuItem value={TaskStatus.IN_PROGRESS}>In Progress</MenuItem>
+                      <MenuItem value={TaskStatus.REVIEW}>Review</MenuItem>
+                      <MenuItem value={TaskStatus.COMPLETED}>Completed</MenuItem>
+                      <MenuItem value={TaskStatus.BLOCKED}>Blocked</MenuItem>
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="assignedTo"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Assigned To</InputLabel>
+                    <Select 
+                      {...field} 
+                      label="Assigned To"
+                      value={field.value?.id || ''}
+                      onChange={(e) => {
+                        const selectedUser = users.find(u => u.id === e.target.value);
+                        field.onChange(selectedUser);
+                      }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {users.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="auditor"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Auditor</InputLabel>
+                    <Select 
+                      {...field} 
+                      label="Auditor"
+                      value={field.value?.id || ''}
+                      onChange={(e) => {
+                        const selectedUser = users.find(u => u.id === e.target.value);
+                        field.onChange(selectedUser);
+                      }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {users.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {error && <FormHelperText>{error.message}</FormHelperText>}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="dueDate"
+                control={control}
+                rules={{ required: 'Due Date is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Due Date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="defectSummary"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Defect Summary"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="recommendation"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Recommendation"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="userImpact"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="User Impact"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="comments"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Comments"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="disabilityType"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Disability Type"
+                    fullWidth
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="screenshot"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="Screenshot URL"
+                    fullWidth
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} disabled={loading}>Cancel</Button>
+        <Button 
+          onClick={handleSubmit(handleFormSubmit)} 
+          variant="contained"
+          disabled={loading}
+        >
+          {loading ? (task ? 'Saving...' : 'Creating...') : (task ? 'Save Task' : 'Create Task')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

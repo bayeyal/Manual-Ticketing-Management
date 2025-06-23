@@ -116,7 +116,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onAdd }) =
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="caption" color="text.secondary">
-                          Page: {task.pageUrl}
+                          Page: {task.page?.url || 'No page assigned'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>

@@ -5,6 +5,7 @@ import tasksReducer from './slices/tasksSlice';
 import authReducer from './slices/authSlice';
 import selectedProjectReducer from './slices/selectedProjectSlice';
 import usersReducer from './slices/usersSlice';
+import pagesReducer from './slices/pagesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     tasks: tasksReducer,
     selectedProject: selectedProjectReducer,
     users: usersReducer,
+    pages: pagesReducer,
   },
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Typography, Chip, Box } from '@mui/material';
+import { Card, CardContent, Typography, Chip, Box, LinearProgress } from '@mui/material';
 import { Project, ProjectStatus } from '../types/project';
 
 interface ProjectCardProps {
@@ -38,6 +38,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         <Typography color="text.secondary" gutterBottom>
           {project.description}
         </Typography>
+        
+        {/* Progress Bar */}
+        <Box sx={{ mb: 2 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography variant="body2" color="text.secondary">
+              Progress
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {project.progress || 0}%
+            </Typography>
+          </Box>
+          <LinearProgress 
+            variant="determinate" 
+            value={project.progress || 0} 
+            sx={{ height: 8, borderRadius: 4 }}
+          />
+        </Box>
+        
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="text.secondary">
             Due: {new Date(project.dueDate).toLocaleDateString()}

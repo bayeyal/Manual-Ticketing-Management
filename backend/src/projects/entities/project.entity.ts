@@ -1,10 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Task } from '../../tasks/entities/task.entity';
+import { Page } from '../../pages/entities/page.entity';
 
 export enum ProjectStatus {
   NEW = 'NEW',
   IN_PROGRESS = 'IN_PROGRESS',
+  REVIEW = 'REVIEW',
   COMPLETED = 'COMPLETED',
   ON_HOLD = 'ON_HOLD'
 }
@@ -78,6 +80,12 @@ export class Project {
     inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' }
   })
   auditors: User[];
+
+  @OneToMany(() => Page, page => page.project, {
+    cascade: true,
+    onDelete: 'CASCADE'
+  })
+  pages: Page[];
 
   @OneToMany(() => Task, task => task.project, {
     cascade: true,

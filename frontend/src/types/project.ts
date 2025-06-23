@@ -5,6 +5,7 @@ import { Task } from './task';
 export enum ProjectStatus {
   NEW = 'NEW',
   IN_PROGRESS = 'IN_PROGRESS',
+  REVIEW = 'REVIEW',
   COMPLETED = 'COMPLETED',
   ON_HOLD = 'ON_HOLD'
 }
@@ -33,6 +34,7 @@ export interface Project {
   dueDate: string;
   userId: number;
   status: ProjectStatus;
+  progress: number;
   projectAdmin: User;
   assignedUsers: User[];
   assignedUserIds?: number[];

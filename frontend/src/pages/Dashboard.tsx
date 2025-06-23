@@ -9,6 +9,9 @@ import {
   CircularProgress,
   Alert,
   Link,
+  LinearProgress,
+  Card,
+  CardContent,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { fetchProjects } from '../store/slices/projectsSlice';
@@ -126,6 +129,47 @@ const Dashboard: React.FC = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Project Progress Overview */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" component="h2" gutterBottom>
+            Project Progress
+          </Typography>
+          <Grid container spacing={2}>
+            {projects.map((project) => (
+              <Grid item xs={12} md={6} lg={4} key={project.id}>
+                <Card 
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  <CardContent>
+                    <Typography variant="h6" component="div" gutterBottom>
+                      {project.name}
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                        <Typography variant="body2" color="text.secondary">
+                          Progress
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.progress || 0}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={project.progress || 0} 
+                        sx={{ height: 8, borderRadius: 4 }}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Due: {new Date(project.dueDate).toLocaleDateString()}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Box>
     </Container>
   );

@@ -173,9 +173,19 @@ export const tasksApi = {
         ...task,
         dueDate: new Date(task.dueDate).toISOString(),
         projectId: Number(task.projectId), // Ensure projectId is a number
-        assignedToId: task.assignedToId ? Number(task.assignedToId) : null, // Convert to number or null
-        pageUrl: task.pageUrl.startsWith('http') ? task.pageUrl : `https://${task.pageUrl}`, // Add protocol if missing
-        conformanceLevel: task.conformanceLevel.toUpperCase(), // Ensure conformance level is uppercase
+        pageId: Number(task.pageId), // Ensure pageId is a number
+        assignedToId: task.assignedToId ? Number(task.assignedToId) : undefined, // Convert to number or undefined
+        auditorId: task.auditorId ? Number(task.auditorId) : undefined, // Convert to number or undefined
+        conformanceLevel: task.conformanceLevel?.toUpperCase(), // Ensure conformance level is uppercase
+        // Remove any nested objects that shouldn't be sent
+        assignedTo: undefined,
+        auditor: undefined,
+        page: undefined,
+        project: undefined,
+        messages: undefined,
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined
       };
       console.log('Creating task with data:', JSON.stringify(taskData, null, 2));
       const response = await api.post<Task>('/tasks', taskData);
@@ -200,7 +210,7 @@ export const tasksApi = {
         dueDate: new Date(task.dueDate).toISOString(),
       };
       console.log('Updating task with data:', taskData);
-      const response = await api.put<Task>(`/tasks/${id}`, taskData);
+      const response = await api.patch<Task>(`/tasks/${id}`, taskData);
       return response;
     } catch (error) {
       if (error instanceof AxiosError && error.response?.data) {

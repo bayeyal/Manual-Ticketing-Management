@@ -18,6 +18,8 @@ import { useAppDispatch, useAppSelector } from './store';
 import { fetchUser } from './store/slices/authSlice';
 import EditUser from './pages/EditUser';
 import Tasks from './pages/Tasks';
+import Pages from './pages/Pages';
+import PageDetails from './pages/PageDetails';
 import Layout from './components/layout/Layout';
 
 function App() {
@@ -51,6 +53,8 @@ function App() {
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetails />} />
             <Route path="projects/:id/edit" element={<EditProject />} />
+            <Route path="projects/:projectId/pages" element={<Pages />} />
+            <Route path="projects/:projectId/pages/:pageId" element={<PageDetails />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetails />} />
             <Route path="users/:id/edit" element={<EditUser />} />

@@ -66,4 +66,44 @@ export class ProjectsController {
   ) {
     return this.projectsService.removeUser(+id, +userId);
   }
+
+  @Post(':id/calculate-progress')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN, UserRole.PROJECT_ADMIN)
+  calculateProgress(@Param('id') id: string) {
+    return this.projectsService.calculateAndUpdateProgress(+id);
+  }
+
+  @Post(':id/update-status')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN, UserRole.PROJECT_ADMIN)
+  updateStatus(@Param('id') id: string) {
+    return this.projectsService.updateProjectStatus(+id);
+  }
+
+  @Post('recalculate-all-progress')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN)
+  async recalculateAllProgress() {
+    const projects = await this.projectsService.findAll();
+    const results = [];
+    
+    for (const project of projects) {
+      try {
+        const progress = await this.projectsService.calculateAndUpdateProgress(project.id);
+        results.push({ projectId: project.id, projectName: project.name, progress });
+      } catch (error) {
+        results.push({ projectId: project.id, projectName: project.name, error: error.message });
+      }
+    }
+    
+    return { message: 'Progress recalculation completed', results };
+  }
+
+  @Get('test-progress/:id')
+  async testProgress(@Param('id') id: string) {
+    try {
+      const progress = await this.projectsService.calculateAndUpdateProgress(+id);
+      return { projectId: +id, progress, message: 'Progress calculated successfully' };
+    } catch (error) {
+      return { projectId: +id, error: error.message };
+    }
+  }
 } 

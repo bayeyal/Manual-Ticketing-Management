@@ -1,9 +1,10 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ProjectsService } from '../projects/projects.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -11,6 +12,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @Inject(forwardRef(() => ProjectsService))
+    private projectsService: ProjectsService,
   ) {}
 
   private async hashPassword(password: string): Promise<string> {
@@ -24,11 +27,30 @@ export class UsersService {
     }
 
     const hashedPassword = await this.hashPassword(createUserDto.password);
+    
+    // Remove assignedProjectIds from the user creation data
+    const { assignedProjectIds, ...userData } = createUserDto;
+    
     const user = this.usersRepository.create({
-      ...createUserDto,
+      ...userData,
       password: hashedPassword
     });
-    return this.usersRepository.save(user);
+    
+    const savedUser = await this.usersRepository.save(user);
+
+    // Handle project assignments if provided
+    if (assignedProjectIds && assignedProjectIds.length > 0) {
+      for (const projectId of assignedProjectIds) {
+        try {
+          await this.projectsService.assignUser(projectId, savedUser.id);
+        } catch (error) {
+          console.error(`Failed to assign user to project ${projectId}:`, error);
+          // Continue with other assignments even if one fails
+        }
+      }
+    }
+
+    return savedUser;
   }
 
   async findAll(): Promise<User[]> {

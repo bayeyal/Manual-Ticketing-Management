@@ -1,6 +1,5 @@
-import { IsString, IsOptional, IsNumber, IsEnum, IsDateString, IsUrl } from 'class-validator';
-import { TaskStatus, TaskSeverity, TaskPriority } from '../entities/task.entity';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsEnum, IsNumber, IsDateString } from 'class-validator';
+import { TaskSeverity, TaskStatus, TaskPriority } from '../entities/task.entity';
 
 export class CreateTaskDto {
   @IsString()
@@ -9,18 +8,6 @@ export class CreateTaskDto {
   @IsString()
   description: string;
 
-  @IsNumber()
-  projectId: number;
-
-  @IsEnum(TaskStatus)
-  status: TaskStatus;
-
-  @IsEnum(TaskSeverity)
-  severity: TaskSeverity;
-
-  @IsEnum(TaskPriority)
-  priority: TaskPriority;
-
   @IsString()
   wcagCriteria: string;
 
@@ -28,7 +15,6 @@ export class CreateTaskDto {
   wcagVersion: string;
 
   @IsString()
-  @IsEnum(['A', 'AA', 'AAA'])
   conformanceLevel: string;
 
   @IsString()
@@ -51,27 +37,37 @@ export class CreateTaskDto {
   @IsOptional()
   disabilityType?: string;
 
-  @IsUrl()
-  pageUrl: string;
-
   @IsString()
   @IsOptional()
   screenshot?: string;
 
+  @IsEnum(TaskSeverity)
+  @IsOptional()
+  severity?: TaskSeverity;
+
+  @IsEnum(TaskStatus)
+  @IsOptional()
+  status?: TaskStatus;
+
+  @IsEnum(TaskPriority)
+  @IsOptional()
+  priority?: TaskPriority;
+
   @IsNumber()
   @IsOptional()
-  @Transform(({ value }) => value === undefined ? null : value)
   assignedToId?: number;
 
   @IsNumber()
   @IsOptional()
   auditorId?: number;
 
+  @IsNumber()
+  @IsOptional()
+  projectId?: number;
+
+  @IsNumber()
+  pageId: number;
+
   @IsDateString()
-  @Transform(({ value }) => {
-    if (!value) return value;
-    const date = new Date(value);
-    return isNaN(date.getTime()) ? value : date.toISOString();
-  })
-  dueDate: Date;
+  dueDate: string;
 } 

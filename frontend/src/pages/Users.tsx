@@ -94,7 +94,7 @@ const Users: React.FC = () => {
       email: '',
       password: '',
       role: UserRole.USER,
-      assignedProjectIds: []
+      assignedProjectIds: [],
     });
     setOpen(true);
   };
@@ -138,7 +138,7 @@ const Users: React.FC = () => {
         email: data.email,
         password: data.password,
         role: data.role,
-        assignedProjectIds: data.assignedProjectIds || []
+        assignedProjectIds: data.assignedProjectIds,
       };
       await dispatch(createUser(createData));
       handleClose();
@@ -383,7 +383,7 @@ const Users: React.FC = () => {
                           ))}
                         </Select>
                         <FormHelperText>
-                          Select projects to assign to this user
+                          Select projects to assign to this user (optional)
                         </FormHelperText>
                       </FormControl>
                     )}

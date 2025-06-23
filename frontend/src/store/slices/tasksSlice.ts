@@ -37,6 +37,25 @@ export const fetchTasks = createAsyncThunk(
   }
 );
 
+export const fetchTasksByPage = createAsyncThunk(
+  'tasks/fetchTasksByPage',
+  async (pageId: number) => {
+    console.log('Fetching tasks for page:', pageId);
+    try {
+      const response = await api.get(`/tasks/page/${pageId}`);
+      console.log('Tasks by page API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tasks by page:', error);
+      if (error instanceof AxiosError) {
+        console.error('Request failed with status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+      }
+      throw error;
+    }
+  }
+);
+
 export const fetchTaskById = createAsyncThunk(
   'tasks/fetchTaskById',
   async (id: number) => {
@@ -48,16 +67,80 @@ export const fetchTaskById = createAsyncThunk(
 export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (task: Partial<Task>) => {
-    const response = await api.post('/tasks', task);
-    return response.data;
+    console.log('=== createTask async thunk started ===');
+    console.log('Creating task with data:', JSON.stringify(task, null, 2));
+    try {
+      console.log('=== Creating task with data ===');
+      console.log('Request data:', JSON.stringify(task, null, 2));
+      const response = await api.post('/tasks', task);
+      console.log('=== Task created successfully ===');
+      console.log('Response:', response.data);
+      console.log('=== createTask async thunk completed successfully ===');
+      return response.data;
+    } catch (error) {
+      console.error('=== createTask async thunk failed ===');
+      console.error('Error creating task:', error);
+      if (error instanceof AxiosError) {
+        console.error('Request failed with status:', error.response?.status);
+        console.error('Request data that was sent:', JSON.stringify(task, null, 2));
+        console.error('Response data:', error.response?.data);
+        console.error('Validation errors:', error.response?.data?.message);
+        
+        // Handle different types of error messages
+        let errorMessage = 'Unknown error';
+        if (error.response?.data?.message) {
+          if (Array.isArray(error.response.data.message)) {
+            errorMessage = error.response.data.message.join(', ');
+          } else {
+            errorMessage = error.response.data.message;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        throw new Error(`Failed to create task: ${errorMessage}`);
+      }
+      throw error;
+    }
   }
 );
 
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
   async ({ id, task }: { id: number; task: Partial<Task> }) => {
-    const response = await api.patch(`/tasks/${id}`, task);
-    return response.data;
+    console.log('=== updateTask async thunk started ===');
+    console.log('Updating task with ID:', id, 'and data:', JSON.stringify(task, null, 2));
+    try {
+      const response = await api.patch(`/tasks/${id}`, task);
+      console.log('=== Task updated successfully ===');
+      console.log('Response:', response.data);
+      console.log('=== updateTask async thunk completed successfully ===');
+      return response.data;
+    } catch (error) {
+      console.error('=== updateTask async thunk failed ===');
+      console.error('Error updating task:', error);
+      if (error instanceof AxiosError) {
+        console.error('Request failed with status:', error.response?.status);
+        console.error('Request data that was sent:', JSON.stringify(task, null, 2));
+        console.error('Response data:', error.response?.data);
+        console.error('Validation errors:', error.response?.data?.message);
+        
+        // Handle different types of error messages
+        let errorMessage = 'Unknown error';
+        if (error.response?.data?.message) {
+          if (Array.isArray(error.response.data.message)) {
+            errorMessage = error.response.data.message.join(', ');
+          } else {
+            errorMessage = error.response.data.message;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        throw new Error(`Failed to update task: ${errorMessage}`);
+      }
+      throw error;
+    }
   }
 );
 
@@ -99,6 +182,19 @@ const tasksSlice = createSlice({
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch tasks';
+      })
+      // Fetch tasks by page
+      .addCase(fetchTasksByPage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTasksByPage.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchTasksByPage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch tasks by page';
       })
       // Fetch task by ID
       .addCase(fetchTaskById.pending, (state) => {

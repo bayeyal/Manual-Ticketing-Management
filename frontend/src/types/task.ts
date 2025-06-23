@@ -1,27 +1,28 @@
 import { BaseEntity } from './base';
 import { User } from './user';
 import { Project } from './project';
+import { Page } from './page';
 
 export enum TaskStatus {
   NEW = 'NEW',
   IN_PROGRESS = 'IN_PROGRESS',
+  REVIEW = 'REVIEW',
   COMPLETED = 'COMPLETED',
   BLOCKED = 'BLOCKED',
-  ON_HOLD = 'ON_HOLD'
 }
 
 export enum TaskSeverity {
-  CRITICAL = 'CRITICAL',
-  HIGH = 'HIGH',
+  LOW = 'LOW',
   MODERATE = 'MODERATE',
-  LOW = 'LOW'
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
 }
 
 export enum TaskPriority {
-  URGENT = 'URGENT',
-  HIGH = 'HIGH',
+  LOW = 'LOW',
   MEDIUM = 'MEDIUM',
-  LOW = 'LOW'
+  HIGH = 'HIGH',
+  URGENT = 'URGENT',
 }
 
 export interface TaskMessage {
@@ -36,23 +37,25 @@ export interface Task extends BaseEntity {
   id: number;
   title: string;
   description: string;
-  status: TaskStatus;
-  severity: TaskSeverity;
-  priority: TaskPriority;
   wcagCriteria: string;
   wcagVersion: string;
   conformanceLevel: string;
-  defectSummary: string;
-  recommendation: string;
-  userImpact: string;
-  comments: string;
-  disabilityType: string;
-  pageUrl: string;
+  defectSummary?: string;
+  recommendation?: string;
+  userImpact?: string;
+  comments?: string;
+  disabilityType?: string;
   screenshot?: string;
-  dueDate: string;
-  projectId: number;
+  severity: TaskSeverity;
+  status: TaskStatus;
+  priority: TaskPriority;
   assignedTo?: User;
   auditor?: User;
+  project: Project;
+  page: Page;
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
   messages?: TaskMessage[];
 }
 
@@ -67,12 +70,35 @@ export interface CreateTaskDto {
   userImpact?: string;
   comments?: string;
   disabilityType?: string;
-  pageUrl: string;
-  severity: TaskSeverity;
-  status: TaskStatus;
   screenshot?: string;
+  severity?: TaskSeverity;
+  status?: TaskStatus;
+  priority?: TaskPriority;
   assignedToId?: number;
-  priority: TaskPriority;
+  auditorId?: number;
+  projectId?: number;
+  pageId: number;
+  pageUrl?: string;
   dueDate: string;
-  projectId: number;
+}
+
+export interface UpdateTaskDto {
+  title?: string;
+  description?: string;
+  wcagCriteria?: string;
+  wcagVersion?: string;
+  conformanceLevel?: string;
+  defectSummary?: string;
+  recommendation?: string;
+  userImpact?: string;
+  comments?: string;
+  disabilityType?: string;
+  screenshot?: string;
+  severity?: TaskSeverity;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assignedToId?: number;
+  auditorId?: number;
+  pageId?: number;
+  dueDate?: string;
 } 

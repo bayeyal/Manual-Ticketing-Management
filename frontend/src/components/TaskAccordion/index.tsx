@@ -18,6 +18,8 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -35,6 +37,7 @@ interface TaskAccordionProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
   onSendMessage: (taskId: number, content: string, mentionedUserId?: number) => void;
+  onUpdateStatus?: (taskId: number, status: TaskStatus) => void;
 }
 
 const TaskAccordion: React.FC<TaskAccordionProps> = ({
@@ -43,12 +46,14 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
   onEdit,
   onDelete,
   onSendMessage,
+  onUpdateStatus,
 }) => {
   const [expandedTask, setExpandedTask] = useState<number | null>(null);
   const [messageContent, setMessageContent] = useState<{ [key: number]: string }>({});
   const [mentionSearch, setMentionSearch] = useState<{ [key: number]: string }>({});
   const [mentionAnchorEl, setMentionAnchorEl] = useState<{ [key: number]: HTMLElement | null }>({});
   const [selectedUserIndex, setSelectedUserIndex] = useState<{ [key: number]: number }>({});
+  const [statusAnchorEl, setStatusAnchorEl] = useState<{ [key: number]: HTMLElement | null }>({});
   const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
 
   const getStatusColor = (status: TaskStatus) => {
@@ -98,6 +103,22 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
 
   const handleExpand = (taskId: number) => {
     setExpandedTask(expandedTask === taskId ? null : taskId);
+  };
+
+  const handleStatusClick = (taskId: number, event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setStatusAnchorEl({ ...statusAnchorEl, [taskId]: event.currentTarget });
+  };
+
+  const handleStatusClose = (taskId: number) => {
+    setStatusAnchorEl({ ...statusAnchorEl, [taskId]: null });
+  };
+
+  const handleStatusUpdate = (taskId: number, status: TaskStatus) => {
+    if (onUpdateStatus) {
+      onUpdateStatus(taskId, status);
+    }
+    handleStatusClose(taskId);
   };
 
   const handleMessageChange = (taskId: number, content: string) => {
@@ -222,6 +243,8 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
                     label={task.status}
                     color={getStatusColor(task.status)}
                     size="small"
+                    onClick={(e) => handleStatusClick(task.id, e)}
+                    sx={{ cursor: 'pointer' }}
                   />
                   <Chip
                     label={task.severity}
@@ -354,6 +377,32 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
             </Box>
           </AccordionDetails>
         </Accordion>
+      ))}
+
+      {/* Status Update Menus */}
+      {tasks.map((task) => (
+        <Menu
+          key={`status-menu-${task.id}`}
+          anchorEl={statusAnchorEl[task.id]}
+          open={Boolean(statusAnchorEl[task.id])}
+          onClose={() => handleStatusClose(task.id)}
+        >
+          <MenuItem onClick={() => handleStatusUpdate(task.id, TaskStatus.NEW)}>
+            New
+          </MenuItem>
+          <MenuItem onClick={() => handleStatusUpdate(task.id, TaskStatus.IN_PROGRESS)}>
+            In Progress
+          </MenuItem>
+          <MenuItem onClick={() => handleStatusUpdate(task.id, TaskStatus.REVIEW)}>
+            Review
+          </MenuItem>
+          <MenuItem onClick={() => handleStatusUpdate(task.id, TaskStatus.COMPLETED)}>
+            Completed
+          </MenuItem>
+          <MenuItem onClick={() => handleStatusUpdate(task.id, TaskStatus.BLOCKED)}>
+            Blocked
+          </MenuItem>
+        </Menu>
       ))}
     </Box>
   );

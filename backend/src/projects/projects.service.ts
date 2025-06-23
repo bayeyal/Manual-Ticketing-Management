@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import { Project } from './entities/project.entity';
+import { Project, ProjectStatus } from './entities/project.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from '../users/entities/user.entity';
+import { Page } from '../pages/entities/page.entity';
+import { Task, TaskStatus } from '../tasks/entities/task.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -13,6 +15,10 @@ export class ProjectsService {
     private projectsRepository: Repository<Project>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Page)
+    private pagesRepository: Repository<Page>,
+    @InjectRepository(Task)
+    private tasksRepository: Repository<Task>,
   ) {}
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
@@ -36,12 +42,22 @@ export class ProjectsService {
       project.assignedUsers = assignedUsers;
     }
 
-    return this.projectsRepository.save(project);
+    const savedProject = await this.projectsRepository.save(project);
+
+    // Create a default page with the project's URL
+    const defaultPage = this.pagesRepository.create({
+      url: createProjectDto.url,
+      project: savedProject,
+    });
+    await this.pagesRepository.save(defaultPage);
+
+    return savedProject;
   }
 
   async findAll(): Promise<Project[]> {
     return this.projectsRepository
       .createQueryBuilder('project')
+      .leftJoinAndSelect('project.pages', 'pages')
       .leftJoinAndSelect('project.tasks', 'task')
       .leftJoinAndSelect('project.assignedUsers', 'assignedUser')
       .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
@@ -52,6 +68,7 @@ export class ProjectsService {
     console.log('Finding project with ID:', id);
     const project = await this.projectsRepository
       .createQueryBuilder('project')
+      .leftJoinAndSelect('project.pages', 'pages')
       .leftJoinAndSelect('project.tasks', 'task')
       .leftJoinAndSelect('project.assignedUsers', 'assignedUser')
       .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
@@ -125,5 +142,66 @@ export class ProjectsService {
     }
 
     return this.projectsRepository.save(project);
+  }
+
+  async calculateAndUpdateProgress(projectId: number): Promise<number> {
+    console.log('Calculating progress for project:', projectId);
+    
+    // Get all pages for the project
+    const pages = await this.pagesRepository.find({
+      where: { project: { id: projectId } },
+      relations: ['tasks']
+    });
+    
+    // Get all tasks from all pages in the project
+    const allTasks: Task[] = [];
+    pages.forEach(page => {
+      if (page.tasks) {
+        allTasks.push(...page.tasks);
+      }
+    });
+    
+    console.log(`Found ${pages.length} pages and ${allTasks.length} tasks for project ${projectId}`);
+    
+    if (allTasks.length === 0) {
+      console.log('No tasks found for project, setting progress to 0');
+      await this.projectsRepository.update(projectId, { progress: 0 });
+      return 0;
+    }
+    
+    // Count completed tasks
+    const completedTasks = allTasks.filter(task => task.status === TaskStatus.COMPLETED);
+    const progress = Math.round((completedTasks.length / allTasks.length) * 100);
+    
+    console.log(`Project ${projectId}: ${completedTasks.length}/${allTasks.length} tasks completed = ${progress}%`);
+    console.log('Task statuses:', allTasks.map(task => ({ id: task.id, status: task.status })));
+    
+    // Update the project's progress
+    await this.projectsRepository.update(projectId, { progress });
+    
+    return progress;
+  }
+
+  async updateProjectStatus(projectId: number): Promise<Project> {
+    const project = await this.findOne(projectId);
+    const progress = await this.calculateAndUpdateProgress(projectId);
+    
+    // Update project status based on progress
+    let newStatus = project.status;
+    
+    if (progress === 100) {
+      newStatus = ProjectStatus.COMPLETED;
+    } else if (progress > 0) {
+      newStatus = ProjectStatus.IN_PROGRESS;
+    } else {
+      newStatus = ProjectStatus.NEW;
+    }
+    
+    if (newStatus !== project.status) {
+      project.status = newStatus;
+      await this.projectsRepository.save(project);
+    }
+    
+    return project;
   }
 } 

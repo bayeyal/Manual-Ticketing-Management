@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { Task } from './entities/task.entity';
@@ -18,11 +19,11 @@ import { User } from '../users/entities/user.entity';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('tasks')
-@UseGuards(JwtAuthGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   create(@Body() createTaskDto: CreateTaskDto, @GetUser() user: User) {
     console.log('Received task creation request:', JSON.stringify(createTaskDto, null, 2));
     try {
@@ -37,7 +38,7 @@ export class TasksController {
       console.log('wcagCriteria:', createTaskDto.wcagCriteria);
       console.log('wcagVersion:', createTaskDto.wcagVersion);
       console.log('conformanceLevel:', createTaskDto.conformanceLevel);
-      console.log('pageUrl:', createTaskDto.pageUrl);
+      console.log('pageId:', createTaskDto.pageId);
       console.log('dueDate:', createTaskDto.dueDate);
       console.log('assignedToId:', createTaskDto.assignedToId);
 
@@ -60,31 +61,54 @@ export class TasksController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(@Query('projectId') projectId: number) {
     return this.tasksService.findAll(projectId);
   }
 
+  @Get('health')
+  @UseGuards() // Explicitly no guards
+  healthCheck() {
+    console.log('=== Health check endpoint ===');
+    return { 
+      message: 'Tasks controller is working',
+      timestamp: new Date().toISOString(),
+      status: 'ok'
+    };
+  }
+
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {
     return this.tasksService.findOne(+id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
     return this.tasksService.update(+id, updateTaskDto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string) {
     return this.tasksService.remove(+id);
   }
 
   @Get('project/:projectId')
+  @UseGuards(JwtAuthGuard)
   findByProject(@Param('projectId') projectId: string) {
     return this.tasksService.findByProject(+projectId);
   }
 
+  @Get('page/:pageId')
+  @UseGuards(JwtAuthGuard)
+  findByPage(@Param('pageId') pageId: string) {
+    return this.tasksService.findByPage(+pageId);
+  }
+
   @Post(':id/users/:userId')
+  @UseGuards(JwtAuthGuard)
   assignUser(
     @Param('id') id: string,
     @Param('userId') userId: string,
@@ -93,11 +117,13 @@ export class TasksController {
   }
 
   @Delete(':id/users')
+  @UseGuards(JwtAuthGuard)
   removeUser(@Param('id') id: string) {
     return this.tasksService.removeUser(+id);
   }
 
   @Post(':id/messages')
+  @UseGuards(JwtAuthGuard)
   async addMessage(
     @Param('id') id: string,
     @Body() data: { content: string; mentionedUserId?: number },
@@ -107,6 +133,7 @@ export class TasksController {
   }
 
   @Get(':id/messages')
+  @UseGuards(JwtAuthGuard)
   async getMessages(@Param('id') id: string) {
     return this.tasksService.getMessages(+id);
   }
