@@ -37,6 +37,25 @@ export const fetchTasks = createAsyncThunk(
   }
 );
 
+export const fetchAllTasks = createAsyncThunk(
+  'tasks/fetchAllTasks',
+  async () => {
+    console.log('Fetching all tasks');
+    try {
+      const response = await tasksApi.getAll();
+      console.log('All tasks API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all tasks:', error);
+      if (error instanceof AxiosError) {
+        console.error('Request failed with status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+      }
+      throw error;
+    }
+  }
+);
+
 export const fetchTasksByPage = createAsyncThunk(
   'tasks/fetchTasksByPage',
   async (pageId: number) => {
@@ -182,6 +201,19 @@ const tasksSlice = createSlice({
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch tasks';
+      })
+      // Fetch all tasks
+      .addCase(fetchAllTasks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllTasks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchAllTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch all tasks';
       })
       // Fetch tasks by page
       .addCase(fetchTasksByPage.pending, (state) => {

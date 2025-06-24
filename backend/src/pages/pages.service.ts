@@ -34,21 +34,21 @@ export class PagesService {
 
   async findAll(): Promise<Page[]> {
     return this.pagesRepository.find({
-      relations: ['project', 'tasks']
+      relations: ['project']
     });
   }
 
   async findByProject(projectId: number): Promise<Page[]> {
     return this.pagesRepository.find({
       where: { project: { id: projectId } },
-      relations: ['project', 'tasks']
+      relations: ['project']
     });
   }
 
   async findOne(id: number): Promise<Page> {
     const page = await this.pagesRepository.findOne({
       where: { id },
-      relations: ['project', 'tasks', 'tasks.assignedTo', 'tasks.auditor']
+      relations: ['project']
     });
 
     if (!page) {

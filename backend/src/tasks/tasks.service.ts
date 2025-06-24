@@ -6,7 +6,6 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { User } from '../users/entities/user.entity';
 import { Project } from '../projects/entities/project.entity';
-import { Page } from '../pages/entities/page.entity';
 import { TaskSeverity, TaskStatus, TaskPriority } from './entities/task.entity';
 import { ProjectsService } from '../projects/projects.service';
 
@@ -21,8 +20,6 @@ export class TasksService {
     private usersRepository: Repository<User>,
     @InjectRepository(Project)
     private projectsRepository: Repository<Project>,
-    @InjectRepository(Page)
-    private pagesRepository: Repository<Page>,
     private projectsService: ProjectsService,
   ) {}
 
@@ -30,15 +27,14 @@ export class TasksService {
     console.log('Creating task with data:', JSON.stringify(createTaskDto, null, 2));
     
     try {
-      // Load page first with project relation
-      const page = await this.pagesRepository.findOne({ 
-        where: { id: createTaskDto.pageId },
-        relations: ['project']
+      // Load project first
+      const project = await this.projectsRepository.findOne({ 
+        where: { id: createTaskDto.projectId }
       });
-      console.log('Found page:', page);
+      console.log('Found project:', project);
       
-      if (!page) {
-        throw new NotFoundException(`Page with ID ${createTaskDto.pageId} not found`);
+      if (!project) {
+        throw new NotFoundException(`Project with ID ${createTaskDto.projectId} not found`);
       }
       
       // Create task with basic data
@@ -58,8 +54,7 @@ export class TasksService {
         status: createTaskDto.status || TaskStatus.NEW,
         priority: createTaskDto.priority || TaskPriority.MEDIUM,
         dueDate: new Date(createTaskDto.dueDate),
-        page: page,
-        project: page.project
+        project: project
       });
       
       // Load assigned user if specified
@@ -104,7 +99,6 @@ export class TasksService {
     const tasks = await this.tasksRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.project', 'project')
-      .leftJoinAndSelect('task.page', 'page')
       .leftJoinAndSelect('task.assignedTo', 'assignedTo')
       .leftJoinAndSelect('task.auditor', 'auditor')
       .leftJoinAndSelect('task.messages', 'messages')
@@ -117,10 +111,26 @@ export class TasksService {
     return tasks;
   }
 
+  async findAllTasks(): Promise<Task[]> {
+    console.log('Finding all tasks');
+    const tasks = await this.tasksRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.project', 'project')
+      .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('task.auditor', 'auditor')
+      .leftJoinAndSelect('task.messages', 'messages')
+      .leftJoinAndSelect('messages.user', 'messageUser')
+      .leftJoinAndSelect('messages.mentionedUser', 'mentionedUser')
+      .getMany();
+    
+    console.log('Found all tasks:', JSON.stringify(tasks, null, 2));
+    return tasks;
+  }
+
   async findOne(id: number): Promise<Task> {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['assignedTo', 'auditor', 'page', 'project', 'messages', 'messages.user', 'messages.mentionedUser'],
+      relations: ['assignedTo', 'auditor', 'messages', 'messages.user', 'messages.mentionedUser'],
     });
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
@@ -150,20 +160,6 @@ export class TasksService {
           task.auditor = auditor;
         } else {
           console.warn(`User with ID ${updateTaskDto.auditorId} not found for auditor assignment`);
-        }
-      }
-      
-      // Handle page assignment if provided
-      if (updateTaskDto.pageId) {
-        const page = await this.pagesRepository.findOne({ 
-          where: { id: updateTaskDto.pageId },
-          relations: ['project']
-        });
-        if (page) {
-          task.page = page;
-          task.project = page.project;
-        } else {
-          console.warn(`Page with ID ${updateTaskDto.pageId} not found`);
         }
       }
       
@@ -251,14 +247,7 @@ export class TasksService {
   async findByProject(projectId: number): Promise<Task[]> {
     return this.tasksRepository.find({
       where: { project: { id: projectId } },
-      relations: ['assignedTo', 'auditor', 'page', 'messages', 'messages.user', 'messages.mentionedUser'],
-    });
-  }
-
-  async findByPage(pageId: number): Promise<Task[]> {
-    return this.tasksRepository.find({
-      where: { page: { id: pageId } },
-      relations: ['assignedTo', 'auditor', 'page', 'project', 'messages', 'messages.user', 'messages.mentionedUser'],
+      relations: ['assignedTo', 'auditor', 'messages', 'messages.user', 'messages.mentionedUser'],
     });
   }
 
@@ -280,14 +269,12 @@ export class TasksService {
 
   async testDatabaseConnection() {
     try {
-      const pageCount = await this.pagesRepository.count();
       const projectCount = await this.projectsRepository.count();
       const userCount = await this.usersRepository.count();
       
       return {
         success: true,
         counts: {
-          pages: pageCount,
           projects: projectCount,
           users: userCount
         }

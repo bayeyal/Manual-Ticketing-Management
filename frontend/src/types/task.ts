@@ -1,7 +1,6 @@
 import { BaseEntity } from './base';
 import { User } from './user';
 import { Project } from './project';
-import { Page } from './page';
 
 export enum TaskStatus {
   NEW = 'NEW',
@@ -52,7 +51,6 @@ export interface Task extends BaseEntity {
   assignedTo?: User;
   auditor?: User;
   project: Project;
-  page: Page;
   dueDate: string;
   createdAt: string;
   updatedAt: string;
@@ -76,9 +74,7 @@ export interface CreateTaskDto {
   priority?: TaskPriority;
   assignedToId?: number;
   auditorId?: number;
-  projectId?: number;
-  pageId: number;
-  pageUrl?: string;
+  projectId: number;
   dueDate: string;
 }
 
@@ -99,6 +95,5 @@ export interface UpdateTaskDto {
   priority?: TaskPriority;
   assignedToId?: number;
   auditorId?: number;
-  pageId?: number;
   dueDate?: string;
 } 

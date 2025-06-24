@@ -250,16 +250,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
               </Typography>
 
               <Typography variant="subtitle2" color="text.secondary">
-                Page URL
-              </Typography>
-              <Typography variant="body1" paragraph>
-                {task.page ? (
-                  <a href={task.page.url} target="_blank" rel="noopener noreferrer">
-                    {task.page.url}
-                  </a>
-                ) : (
-                  'No page assigned'
-                )}
+                Project: {task.project?.name || 'Unknown Project'}
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>

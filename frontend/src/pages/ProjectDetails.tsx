@@ -69,7 +69,6 @@ const ProjectDetails: React.FC = () => {
 
   const handleEditTask = (task: Task) => {
     setSelectedTask(task);
-    setSelectedPageId(task.page?.id || null);
     setIsTaskDialogOpen(true);
   };
 
@@ -109,7 +108,6 @@ const ProjectDetails: React.FC = () => {
         wcagCriteria: '1.1.1',
         wcagVersion: '2.1',
         conformanceLevel: 'AA',
-        pageId: pageIdToUse,
         projectId: project.id,
         dueDate: new Date().toISOString(),
         severity: 'MODERATE', // TaskSeverity.MODERATE
@@ -152,20 +150,14 @@ const ProjectDetails: React.FC = () => {
         // Convert full objects to IDs
         assignedToId: data.assignedTo?.id,
         auditorId: data.auditor?.id,
-        pageId: data.page?.id,
         // Remove the full objects to avoid backend validation errors
         assignedTo: undefined,
         auditor: undefined,
-        page: undefined,
       };
 
       if (selectedTask) {
         await dispatch(updateTask({ id: selectedTask.id, task: cleanTaskData }));
       } else {
-        if (!selectedPageId) {
-          console.error('No page selected for task creation');
-          return;
-        }
         if (!project?.id) {
           console.error('Project ID is missing');
           return;
@@ -173,7 +165,6 @@ const ProjectDetails: React.FC = () => {
         const taskData = {
           ...cleanTaskData,
           projectId: project.id,
-          pageId: selectedPageId
         };
         await dispatch(createTask(taskData));
       }

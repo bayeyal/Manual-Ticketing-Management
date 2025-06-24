@@ -38,7 +38,6 @@ export class TasksController {
       console.log('wcagCriteria:', createTaskDto.wcagCriteria);
       console.log('wcagVersion:', createTaskDto.wcagVersion);
       console.log('conformanceLevel:', createTaskDto.conformanceLevel);
-      console.log('pageId:', createTaskDto.pageId);
       console.log('dueDate:', createTaskDto.dueDate);
       console.log('assignedToId:', createTaskDto.assignedToId);
 
@@ -62,8 +61,12 @@ export class TasksController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Query('projectId') projectId: number) {
-    return this.tasksService.findAll(projectId);
+  findAll(@Query('projectId') projectId?: number) {
+    if (projectId) {
+      return this.tasksService.findAll(projectId);
+    } else {
+      return this.tasksService.findAllTasks();
+    }
   }
 
   @Get('health')
@@ -99,12 +102,6 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   findByProject(@Param('projectId') projectId: string) {
     return this.tasksService.findByProject(+projectId);
-  }
-
-  @Get('page/:pageId')
-  @UseGuards(JwtAuthGuard)
-  findByPage(@Param('pageId') pageId: string) {
-    return this.tasksService.findByPage(+pageId);
   }
 
   @Post(':id/users/:userId')

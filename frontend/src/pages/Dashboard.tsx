@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { fetchProjects } from '../store/slices/projectsSlice';
-import { fetchTasks } from '../store/slices/tasksSlice';
+import { fetchAllTasks } from '../store/slices/tasksSlice';
 
 const Dashboard: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -25,15 +25,8 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchProjects());
+    dispatch(fetchAllTasks());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (projects.length > 0) {
-      projects.forEach(project => {
-        dispatch(fetchTasks(project.id));
-      });
-    }
-  }, [dispatch, projects]);
 
   if (projectsLoading || tasksLoading) {
     return (
@@ -56,6 +49,7 @@ const Dashboard: React.FC = () => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(task => task.status === 'COMPLETED').length;
   const inProgressTasks = tasks.filter(task => task.status === 'IN_PROGRESS').length;
+  const newTasks = tasks.filter(task => task.status === 'NEW').length;
   const blockedTasks = tasks.filter(task => task.status === 'BLOCKED').length;
 
   return (
@@ -118,6 +112,14 @@ const Dashboard: React.FC = () => {
                 In Progress Tasks
               </Typography>
               <Typography variant="h4">{inProgressTasks}</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="h6" gutterBottom>
+                New Tasks
+              </Typography>
+              <Typography variant="h4">{newTasks}</Typography>
             </Paper>
           </Grid>
           <Grid item xs={12} md={3}>

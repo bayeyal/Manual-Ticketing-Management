@@ -69,11 +69,6 @@ const PageDetails: React.FC = () => {
         // Convert full objects to IDs
         assignedToId: data.assignedTo?.id,
         auditorId: data.auditor?.id,
-        pageId: data.page?.id,
-        // Remove the full objects to avoid backend validation errors
-        assignedTo: undefined,
-        auditor: undefined,
-        page: undefined,
       };
 
       if (selectedTask) {
@@ -86,7 +81,6 @@ const PageDetails: React.FC = () => {
         const taskData = {
           ...cleanTaskData,
           projectId: project.id,
-          pageId: page.id
         };
         await dispatch(createTask(taskData));
       }

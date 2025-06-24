@@ -154,7 +154,7 @@ export const tasksApi = {
   getByProject: async (projectId: number) => {
     try {
       console.log('Fetching tasks for project:', projectId);
-      const response = await api.get<Task[]>(`/tasks?projectId=${projectId}`);
+      const response = await api.get<Task[]>(`/tasks/project/${projectId}`);
       console.log('Tasks API response:', response.data);
       return response;
     } catch (error) {
@@ -173,7 +173,6 @@ export const tasksApi = {
         ...task,
         dueDate: new Date(task.dueDate).toISOString(),
         projectId: Number(task.projectId), // Ensure projectId is a number
-        pageId: Number(task.pageId), // Ensure pageId is a number
         assignedToId: task.assignedToId ? Number(task.assignedToId) : undefined, // Convert to number or undefined
         auditorId: task.auditorId ? Number(task.auditorId) : undefined, // Convert to number or undefined
         conformanceLevel: task.conformanceLevel?.toUpperCase(), // Ensure conformance level is uppercase

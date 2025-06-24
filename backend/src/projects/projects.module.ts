@@ -6,10 +6,11 @@ import { Project } from './entities/project.entity';
 import { UsersModule } from '../users/users.module';
 import { User } from '../users/entities/user.entity';
 import { Page } from '../pages/entities/page.entity';
+import { Task } from '../tasks/entities/task.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, User, Page]),
+    TypeOrmModule.forFeature([Project, User, Page, Task]),
     forwardRef(() => UsersModule)
   ],
   controllers: [ProjectsController],

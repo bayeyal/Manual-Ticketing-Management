@@ -57,7 +57,6 @@ const Tasks: React.FC = () => {
         assignedToId: taskData.assignedTo?.id,
         auditorId: taskData.auditor?.id,
         projectId: parseInt(projectId),
-        pageId: taskData.page?.id || 0,
         dueDate: taskData.dueDate || new Date().toISOString().split('T')[0],
       };
       

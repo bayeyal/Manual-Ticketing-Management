@@ -62,11 +62,7 @@ export class CreateTaskDto {
   auditorId?: number;
 
   @IsNumber()
-  @IsOptional()
-  projectId?: number;
-
-  @IsNumber()
-  pageId: number;
+  projectId: number;
 
   @IsDateString()
   dueDate: string;

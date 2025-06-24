@@ -65,23 +65,9 @@ const TaskForm: React.FC<TaskFormProps> = ({
       priority: task?.priority || TaskPriority.MEDIUM,
       assignedTo: task?.assignedTo,
       auditor: task?.auditor,
-      page: task?.page || (selectedPageId ? pages.find(p => p.id === selectedPageId) : undefined),
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     }
   });
-
-  // Reset form when selectedPageId changes
-  useEffect(() => {
-    if (selectedPageId && pages.length > 0) {
-      const selectedPage = pages.find(p => p.id === selectedPageId);
-      if (selectedPage) {
-        reset({
-          ...watch(),
-          page: selectedPage
-        });
-      }
-    }
-  }, [selectedPageId, pages, reset, watch]);
 
   const handleFormSubmit = async (data: Partial<Task>) => {
     setLoading(true);
@@ -201,35 +187,6 @@ const TaskForm: React.FC<TaskFormProps> = ({
                       <MenuItem value="A">A</MenuItem>
                       <MenuItem value="AA">AA</MenuItem>
                       <MenuItem value="AAA">AAA</MenuItem>
-                    </Select>
-                    {error && <FormHelperText>{error.message}</FormHelperText>}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Controller
-                name="page"
-                control={control}
-                rules={{ required: 'Page is required' }}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl fullWidth error={!!error}>
-                    <InputLabel>Page</InputLabel>
-                    <Select 
-                      {...field} 
-                      label="Page"
-                      value={field.value?.id || ''}
-                      onChange={(e) => {
-                        const selectedPage = pages.find(p => p.id === e.target.value);
-                        field.onChange(selectedPage);
-                      }}
-                    >
-                      {pages.map((page) => (
-                        <MenuItem key={page.id} value={page.id}>
-                          {page.url}
-                        </MenuItem>
-                      ))}
                     </Select>
                     {error && <FormHelperText>{error.message}</FormHelperText>}
                   </FormControl>

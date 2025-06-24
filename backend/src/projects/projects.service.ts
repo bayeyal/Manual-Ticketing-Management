@@ -147,21 +147,12 @@ export class ProjectsService {
   async calculateAndUpdateProgress(projectId: number): Promise<number> {
     console.log('Calculating progress for project:', projectId);
     
-    // Get all pages for the project
-    const pages = await this.pagesRepository.find({
-      where: { project: { id: projectId } },
-      relations: ['tasks']
+    // Get all tasks for the project directly
+    const allTasks = await this.tasksRepository.find({
+      where: { project: { id: projectId } }
     });
     
-    // Get all tasks from all pages in the project
-    const allTasks: Task[] = [];
-    pages.forEach(page => {
-      if (page.tasks) {
-        allTasks.push(...page.tasks);
-      }
-    });
-    
-    console.log(`Found ${pages.length} pages and ${allTasks.length} tasks for project ${projectId}`);
+    console.log(`Found ${allTasks.length} tasks for project ${projectId}`);
     
     if (allTasks.length === 0) {
       console.log('No tasks found for project, setting progress to 0');

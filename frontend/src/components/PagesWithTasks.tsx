@@ -51,7 +51,8 @@ const PagesWithTasks: React.FC<PagesWithTasksProps> = ({
   };
 
   const getTasksForPage = (pageId: number) => {
-    return tasks.filter(task => task.page?.id === pageId);
+    // Since tasks are no longer related to pages, return all tasks for the project
+    return tasks;
   };
 
   const handlePageClick = (pageId: number) => {
