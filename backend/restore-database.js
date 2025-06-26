@@ -27,8 +27,14 @@ if (!fs.existsSync(backupPath)) {
   process.exit(1);
 }
 
-// Create psql command for restore
-const psqlCommand = `PGPASSWORD="${DB_PASSWORD}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_DATABASE} -f "${backupPath}"`;
+// Create environment object for cross-platform compatibility
+const env = {
+  ...process.env,
+  PGPASSWORD: DB_PASSWORD
+};
+
+// Create psql command for restore (without PGPASSWORD in the command string)
+const psqlCommand = `psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_DATABASE} -f "${backupPath}"`;
 
 console.log('Starting database restore...');
 console.log(`Database: ${DB_DATABASE}`);
@@ -44,9 +50,13 @@ process.stdin.on('data', () => {
   process.stdin.setRawMode(false);
   process.stdin.pause();
   
-  exec(psqlCommand, (error, stdout, stderr) => {
+  exec(psqlCommand, { env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Restore failed:', error);
+      console.error('\nTroubleshooting tips:');
+      console.error('1. Make sure PostgreSQL is installed and psql is in your PATH');
+      console.error('2. Verify your database connection settings in .env file');
+      console.error('3. Ensure the database exists and is accessible');
       return;
     }
     

@@ -21,16 +21,26 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const backupFilename = `backup-${timestamp}.sql`;
 const backupPath = path.join(backupDir, backupFilename);
 
-// Create pg_dump command
-const pgDumpCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_DATABASE} -f "${backupPath}"`;
+// Create environment object for cross-platform compatibility
+const env = {
+  ...process.env,
+  PGPASSWORD: DB_PASSWORD
+};
+
+// Create pg_dump command (without PGPASSWORD in the command string)
+const pgDumpCommand = `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_DATABASE} -f "${backupPath}"`;
 
 console.log('Starting database backup...');
 console.log(`Database: ${DB_DATABASE}`);
 console.log(`Backup file: ${backupPath}`);
 
-exec(pgDumpCommand, (error, stdout, stderr) => {
+exec(pgDumpCommand, { env }, (error, stdout, stderr) => {
   if (error) {
     console.error('Backup failed:', error);
+    console.error('\nTroubleshooting tips:');
+    console.error('1. Make sure PostgreSQL is installed and pg_dump is in your PATH');
+    console.error('2. Verify your database connection settings in .env file');
+    console.error('3. Ensure the database exists and is accessible');
     return;
   }
   
