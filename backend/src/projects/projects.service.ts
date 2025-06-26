@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Project, ProjectStatus } from './entities/project.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Page } from '../pages/entities/page.entity';
 import { Task, TaskStatus } from '../tasks/entities/task.entity';
 
@@ -20,6 +20,32 @@ export class ProjectsService {
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
   ) {}
+
+  // Helper method to check if user has access to a project
+  private async hasProjectAccess(user: User, projectId: number): Promise<boolean> {
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return true; // Super admin has access to all projects
+    }
+
+    const project = await this.projectsRepository.findOne({
+      where: { id: projectId },
+      relations: ['projectAdmin', 'assignedUsers'],
+    });
+
+    if (!project) {
+      return false;
+    }
+
+    if (user.role === UserRole.PROJECT_ADMIN) {
+      return project.projectAdmin?.id === user.id;
+    }
+
+    if (user.role === UserRole.USER) {
+      return project.assignedUsers?.some(assignedUser => assignedUser.id === user.id);
+    }
+
+    return false;
+  }
 
   async create(createProjectDto: CreateProjectDto): Promise<Project> {
     const projectAdmin = await this.usersRepository.findOne({
@@ -54,18 +80,42 @@ export class ProjectsService {
     return savedProject;
   }
 
-  async findAll(): Promise<Project[]> {
-    return this.projectsRepository
+  async findAll(user: User): Promise<Project[]> {
+    let query = this.projectsRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.pages', 'pages')
       .leftJoinAndSelect('project.tasks', 'task')
       .leftJoinAndSelect('project.assignedUsers', 'assignedUser')
-      .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
-      .getMany();
+      .leftJoinAndSelect('project.projectAdmin', 'projectAdmin');
+
+    // Apply role-based filtering
+    if (user.role === UserRole.SUPER_ADMIN) {
+      // Super admin can see all projects
+      console.log('Super admin - showing all projects');
+    } else if (user.role === UserRole.PROJECT_ADMIN) {
+      // Project admin can see projects they admin
+      query = query.where('projectAdmin.id = :userId', { userId: user.id });
+      console.log('Project admin - filtering by admin projects');
+    } else if (user.role === UserRole.USER) {
+      // Regular users can only see projects they're assigned to
+      query = query.where('assignedUser.id = :userId', { userId: user.id });
+      console.log('Regular user - filtering by assigned projects');
+    } else {
+      // No access for other roles
+      return [];
+    }
+
+    return query.getMany();
   }
 
-  async findOne(id: number): Promise<Project> {
-    console.log('Finding project with ID:', id);
+  async findOne(id: number, user: User): Promise<Project> {
+    console.log('Finding project with ID:', id, 'for user:', user.id, 'with role:', user.role);
+    
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, id))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
     const project = await this.projectsRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.pages', 'pages')
@@ -82,8 +132,13 @@ export class ProjectsService {
     return project;
   }
 
-  async update(id: number, updateProjectDto: UpdateProjectDto): Promise<Project> {
-    const project = await this.findOne(id);
+  async update(id: number, updateProjectDto: UpdateProjectDto, user: User): Promise<Project> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, id))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
+    const project = await this.findOne(id, user);
     
     if (updateProjectDto.projectAdminId) {
       const projectAdmin = await this.usersRepository.findOne({
@@ -107,17 +162,25 @@ export class ProjectsService {
   }
 
   async remove(id: number): Promise<void> {
-    const project = await this.findOne(id);
+    const project = await this.projectsRepository.findOne({ where: { id } });
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${id} not found`);
+    }
     await this.projectsRepository.remove(project);
   }
 
-  async assignUser(projectId: number, userId: number): Promise<Project> {
-    const project = await this.findOne(projectId);
-    const user = await this.usersRepository.findOne({
+  async assignUser(projectId: number, userId: number, user: User): Promise<Project> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
+    const project = await this.findOne(projectId, user);
+    const assignedUser = await this.usersRepository.findOne({
       where: { id: userId }
     });
 
-    if (!user) {
+    if (!assignedUser) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
@@ -126,14 +189,19 @@ export class ProjectsService {
     }
 
     if (!project.assignedUsers.some(u => u.id === userId)) {
-      project.assignedUsers.push(user);
+      project.assignedUsers.push(assignedUser);
     }
 
     return this.projectsRepository.save(project);
   }
 
-  async removeUser(projectId: number, userId: number): Promise<Project> {
-    const project = await this.findOne(projectId);
+  async removeUser(projectId: number, userId: number, user: User): Promise<Project> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
+    const project = await this.findOne(projectId, user);
     
     if (project.assignedUsers) {
       project.assignedUsers = project.assignedUsers.filter(
@@ -144,7 +212,12 @@ export class ProjectsService {
     return this.projectsRepository.save(project);
   }
 
-  async calculateAndUpdateProgress(projectId: number): Promise<number> {
+  async calculateAndUpdateProgress(projectId: number, user: User): Promise<number> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
     console.log('=== PROGRESS CALCULATION STARTED ===');
     console.log('Calculating progress for project:', projectId);
     
@@ -197,26 +270,29 @@ export class ProjectsService {
     }
   }
 
-  async updateProjectStatus(projectId: number): Promise<Project> {
-    const project = await this.findOne(projectId);
-    const progress = await this.calculateAndUpdateProgress(projectId);
+  async updateProjectStatus(projectId: number, user: User): Promise<Project> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
+    const project = await this.findOne(projectId, user);
     
-    // Update project status based on progress
-    let newStatus = project.status;
+    // Simple status update logic - you can enhance this based on your requirements
+    const allTasks = await this.tasksRepository.find({
+      where: { project: { id: projectId } }
+    });
     
-    if (progress === 100) {
-      newStatus = ProjectStatus.COMPLETED;
-    } else if (progress > 0) {
-      newStatus = ProjectStatus.IN_PROGRESS;
+    if (allTasks.length === 0) {
+      project.status = ProjectStatus.NEW;
+    } else if (allTasks.every(task => task.status === TaskStatus.COMPLETED)) {
+      project.status = ProjectStatus.COMPLETED;
+    } else if (allTasks.some(task => task.status === TaskStatus.IN_PROGRESS)) {
+      project.status = ProjectStatus.IN_PROGRESS;
     } else {
-      newStatus = ProjectStatus.NEW;
+      project.status = ProjectStatus.REVIEW;
     }
     
-    if (newStatus !== project.status) {
-      project.status = newStatus;
-      await this.projectsRepository.save(project);
-    }
-    
-    return project;
+    return this.projectsRepository.save(project);
   }
 } 

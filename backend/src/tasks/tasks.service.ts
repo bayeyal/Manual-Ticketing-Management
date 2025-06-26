@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskMessage } from './entities/task.entity';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Project } from '../projects/entities/project.entity';
 import { TaskSeverity, TaskStatus, TaskPriority } from './entities/task.entity';
 import { ProjectsService } from '../projects/projects.service';
@@ -26,10 +26,58 @@ export class TasksService {
     private pageRepository: Repository<Page>,
   ) {}
 
+  // Helper method to check if user has access to a project
+  private async hasProjectAccess(user: User, projectId: number): Promise<boolean> {
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return true; // Super admin has access to all projects
+    }
+
+    const project = await this.projectsRepository.findOne({
+      where: { id: projectId },
+      relations: ['projectAdmin', 'assignedUsers'],
+    });
+
+    if (!project) {
+      return false;
+    }
+
+    if (user.role === UserRole.PROJECT_ADMIN) {
+      return project.projectAdmin?.id === user.id;
+    }
+
+    if (user.role === UserRole.USER) {
+      return project.assignedUsers?.some(assignedUser => assignedUser.id === user.id);
+    }
+
+    return false;
+  }
+
+  // Helper method to check if user has access to a task
+  private async hasTaskAccess(user: User, task: Task): Promise<boolean> {
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return true; // Super admin has access to all tasks
+    }
+
+    if (user.role === UserRole.PROJECT_ADMIN) {
+      return task.project?.projectAdmin?.id === user.id;
+    }
+
+    if (user.role === UserRole.USER) {
+      return task.project?.assignedUsers?.some(assignedUser => assignedUser.id === user.id);
+    }
+
+    return false;
+  }
+
   async create(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
     console.log('Creating task with data:', JSON.stringify(createTaskDto, null, 2));
     
     try {
+      // Check if user has access to the project
+      if (!(await this.hasProjectAccess(user, createTaskDto.projectId))) {
+        throw new ForbiddenException('You do not have access to this project');
+      }
+
       // Load project first
       const project = await this.projectsRepository.findOne({ 
         where: { id: createTaskDto.projectId }
@@ -106,8 +154,14 @@ export class TasksService {
     }
   }
 
-  async findAll(projectId: number): Promise<Task[]> {
-    console.log('Finding tasks for project:', projectId);
+  async findAll(projectId: number, user: User): Promise<Task[]> {
+    console.log('Finding tasks for project:', projectId, 'for user:', user.id, 'with role:', user.role);
+    
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
     const tasks = await this.tasksRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.project', 'project')
@@ -117,6 +171,8 @@ export class TasksService {
       .leftJoinAndSelect('task.messages', 'messages')
       .leftJoinAndSelect('messages.user', 'messageUser')
       .leftJoinAndSelect('messages.mentionedUser', 'mentionedUser')
+      .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
+      .leftJoinAndSelect('project.assignedUsers', 'assignedUsers')
       .where('project.id = :projectId', { projectId })
       .getMany();
     
@@ -124,9 +180,10 @@ export class TasksService {
     return tasks;
   }
 
-  async findAllTasks(): Promise<Task[]> {
-    console.log('Finding all tasks');
-    const tasks = await this.tasksRepository
+  async findAllTasks(user: User): Promise<Task[]> {
+    console.log('Finding all tasks for user:', user.id, 'with role:', user.role);
+    
+    let query = this.tasksRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.project', 'project')
       .leftJoinAndSelect('task.page', 'page')
@@ -135,29 +192,65 @@ export class TasksService {
       .leftJoinAndSelect('task.messages', 'messages')
       .leftJoinAndSelect('messages.user', 'messageUser')
       .leftJoinAndSelect('messages.mentionedUser', 'mentionedUser')
-      .getMany();
-    
-    console.log('Found all tasks:', JSON.stringify(tasks, null, 2));
+      .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
+      .leftJoinAndSelect('project.assignedUsers', 'assignedUsers');
+
+    // Apply role-based filtering
+    if (user.role === UserRole.SUPER_ADMIN) {
+      // Super admin can see all tasks
+      console.log('Super admin - showing all tasks');
+    } else if (user.role === UserRole.PROJECT_ADMIN) {
+      // Project admin can see tasks from projects they admin
+      query = query.where('project.projectAdmin.id = :userId', { userId: user.id });
+      console.log('Project admin - filtering by admin projects');
+    } else if (user.role === UserRole.USER) {
+      // Regular users can only see tasks from projects they're assigned to
+      query = query.where('assignedUsers.id = :userId', { userId: user.id });
+      console.log('Regular user - filtering by assigned projects');
+    } else {
+      // No access for other roles
+      return [];
+    }
+
+    const tasks = await query.getMany();
+    console.log('Found filtered tasks:', JSON.stringify(tasks, null, 2));
     return tasks;
   }
 
-  async findOne(id: number): Promise<Task> {
+  async findOne(id: number, user: User): Promise<Task> {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['assignedTo', 'auditor', 'page', 'messages', 'messages.user', 'messages.mentionedUser'],
+      relations: [
+        'assignedTo', 
+        'auditor', 
+        'page', 
+        'messages', 
+        'messages.user', 
+        'messages.mentionedUser',
+        'project',
+        'project.projectAdmin',
+        'project.assignedUsers'
+      ],
     });
+    
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
+
+    // Check if user has access to this task
+    if (!(await this.hasTaskAccess(user, task))) {
+      throw new ForbiddenException('You do not have access to this task');
+    }
+
     return task;
   }
 
-  async update(id: number, updateTaskDto: UpdateTaskDto): Promise<Task> {
+  async update(id: number, updateTaskDto: UpdateTaskDto, user: User): Promise<Task> {
     console.log('=== TASK UPDATE STARTED ===');
     console.log('Updating task with ID:', id, 'and data:', JSON.stringify(updateTaskDto, null, 2));
     
     try {
-      const task = await this.findOne(id);
+      const task = await this.findOne(id, user);
       console.log('Found existing task:', JSON.stringify(task, null, 2));
       
       // Handle project assignment
@@ -262,13 +355,13 @@ export class TasksService {
     }
   }
 
-  async remove(id: number): Promise<void> {
-    const task = await this.findOne(id);
+  async remove(id: number, user: User): Promise<void> {
+    const task = await this.findOne(id, user);
     await this.tasksRepository.remove(task);
   }
 
   async addMessage(taskId: number, content: string, user: User, mentionedUserId?: number): Promise<TaskMessage> {
-    const task = await this.findOne(taskId);
+    const task = await this.findOne(taskId, user);
     const message = this.taskMessagesRepository.create({
       content,
       task,
@@ -285,8 +378,8 @@ export class TasksService {
     return this.taskMessagesRepository.save(message);
   }
 
-  async getMessages(taskId: number): Promise<TaskMessage[]> {
-    const task = await this.findOne(taskId);
+  async getMessages(taskId: number, user: User): Promise<TaskMessage[]> {
+    const task = await this.findOne(taskId, user);
     return this.taskMessagesRepository.find({
       where: { task: { id: taskId } },
       relations: ['user', 'mentionedUser'],
@@ -294,25 +387,30 @@ export class TasksService {
     });
   }
 
-  async findByProject(projectId: number): Promise<Task[]> {
+  async findByProject(projectId: number, user: User): Promise<Task[]> {
+    // Check if user has access to the project
+    if (!(await this.hasProjectAccess(user, projectId))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
     return this.tasksRepository.find({
       where: { project: { id: projectId } },
       relations: ['assignedTo', 'auditor', 'page', 'messages', 'messages.user', 'messages.mentionedUser'],
     });
   }
 
-  async assignUser(taskId: number, userId: number): Promise<Task> {
-    const task = await this.findOne(taskId);
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
+  async assignUser(taskId: number, userId: number, user: User): Promise<Task> {
+    const task = await this.findOne(taskId, user);
+    const assignedUser = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!assignedUser) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-    task.assignedTo = user;
+    task.assignedTo = assignedUser;
     return this.tasksRepository.save(task);
   }
 
-  async removeUser(taskId: number): Promise<Task> {
-    const task = await this.findOne(taskId);
+  async removeUser(taskId: number, user: User): Promise<Task> {
+    const task = await this.findOne(taskId, user);
     task.assignedTo = null;
     return this.tasksRepository.save(task);
   }
@@ -337,7 +435,7 @@ export class TasksService {
     }
   }
 
-  async findByPage(pageId: number): Promise<Task[]> {
+  async findByPage(pageId: number, user: User): Promise<Task[]> {
     console.log('Finding tasks for page:', pageId);
     const tasks = await this.tasksRepository
       .createQueryBuilder('task')
@@ -348,10 +446,26 @@ export class TasksService {
       .leftJoinAndSelect('task.messages', 'messages')
       .leftJoinAndSelect('messages.user', 'messageUser')
       .leftJoinAndSelect('messages.mentionedUser', 'mentionedUser')
+      .leftJoinAndSelect('project.projectAdmin', 'projectAdmin')
+      .leftJoinAndSelect('project.assignedUsers', 'assignedUsers')
       .where('page.id = :pageId', { pageId })
       .getMany();
     
-    console.log('Found tasks for page:', JSON.stringify(tasks, null, 2));
-    return tasks;
+    // Filter tasks based on user role
+    const filteredTasks = tasks.filter(task => {
+      if (user.role === UserRole.SUPER_ADMIN) {
+        return true;
+      }
+      if (user.role === UserRole.PROJECT_ADMIN) {
+        return task.project?.projectAdmin?.id === user.id;
+      }
+      if (user.role === UserRole.USER) {
+        return task.project?.assignedUsers?.some(assignedUser => assignedUser.id === user.id);
+      }
+      return false;
+    });
+    
+    console.log('Found filtered tasks for page:', JSON.stringify(filteredTasks, null, 2));
+    return filteredTasks;
   }
 } 

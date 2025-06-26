@@ -59,11 +59,11 @@ export class TasksController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Query('projectId') projectId?: number) {
+  findAll(@Query('projectId') projectId?: number, @GetUser() user: User) {
     if (projectId) {
-      return this.tasksService.findAll(projectId);
+      return this.tasksService.findAll(projectId, user);
     } else {
-      return this.tasksService.findAllTasks();
+      return this.tasksService.findAllTasks(user);
     }
   }
 
@@ -80,32 +80,32 @@ export class TasksController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  findOne(@Param('id') id: string) {
-    return this.tasksService.findOne(+id);
+  findOne(@Param('id') id: string, @GetUser() user: User) {
+    return this.tasksService.findOne(+id, user);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
-    return this.tasksService.update(+id, updateTaskDto);
+  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @GetUser() user: User) {
+    return this.tasksService.update(+id, updateTaskDto, user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  remove(@Param('id') id: string) {
-    return this.tasksService.remove(+id);
+  remove(@Param('id') id: string, @GetUser() user: User) {
+    return this.tasksService.remove(+id, user);
   }
 
   @Get('project/:projectId')
   @UseGuards(JwtAuthGuard)
-  findByProject(@Param('projectId') projectId: string) {
-    return this.tasksService.findByProject(+projectId);
+  findByProject(@Param('projectId') projectId: string, @GetUser() user: User) {
+    return this.tasksService.findByProject(+projectId, user);
   }
 
   @Get('page/:pageId')
   @UseGuards(JwtAuthGuard)
-  findByPage(@Param('pageId') pageId: string) {
-    return this.tasksService.findByPage(+pageId);
+  findByPage(@Param('pageId') pageId: string, @GetUser() user: User) {
+    return this.tasksService.findByPage(+pageId, user);
   }
 
   @Post(':id/users/:userId')
@@ -113,14 +113,15 @@ export class TasksController {
   assignUser(
     @Param('id') id: string,
     @Param('userId') userId: string,
+    @GetUser() user: User,
   ) {
-    return this.tasksService.assignUser(+id, +userId);
+    return this.tasksService.assignUser(+id, +userId, user);
   }
 
   @Delete(':id/users')
   @UseGuards(JwtAuthGuard)
-  removeUser(@Param('id') id: string) {
-    return this.tasksService.removeUser(+id);
+  removeUser(@Param('id') id: string, @GetUser() user: User) {
+    return this.tasksService.removeUser(+id, user);
   }
 
   @Post(':id/messages')
@@ -135,7 +136,7 @@ export class TasksController {
 
   @Get(':id/messages')
   @UseGuards(JwtAuthGuard)
-  async getMessages(@Param('id') id: string) {
-    return this.tasksService.getMessages(+id);
+  async getMessages(@Param('id') id: string, @GetUser() user: User) {
+    return this.tasksService.getMessages(+id, user);
   }
 } 

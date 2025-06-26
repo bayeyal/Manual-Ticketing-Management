@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchTasks, createTask } from '../store/slices/tasksSlice';
@@ -7,6 +7,7 @@ import { fetchProjectById, fetchProjects } from '../store/slices/projectsSlice';
 import { fetchPages } from '../store/slices/pagesSlice';
 import { setSelectedProject } from '../store/slices/selectedProjectSlice';
 import { CreateTaskDto, Task } from '../types/task';
+import { UserRole } from '../types/user';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 import {
@@ -20,6 +21,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Chip,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 
@@ -32,11 +34,64 @@ const Tasks: React.FC = () => {
   const { currentProject: project, projects } = useAppSelector((state) => state.projects);
   const { project: selectedProject } = useAppSelector((state) => state.selectedProject);
   const { pages } = useAppSelector((state) => state.pages);
+  const { user } = useAppSelector((state) => state.auth);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
 
   // Determine which project to use
   const activeProject = project || selectedProject;
   const activeProjectId = projectId ? parseInt(projectId) : activeProject?.id;
+
+  // Filter projects based on user role
+  const filteredProjects = useMemo(() => {
+    if (!user || !projects.length) return [];
+    
+    switch (user.role) {
+      case UserRole.SUPER_ADMIN:
+        // Super admin can see all projects
+        return projects;
+      
+      case UserRole.PROJECT_ADMIN:
+        // Project admin can see projects they admin
+        return projects.filter(p => p.projectAdmin?.id === user.id);
+      
+      case UserRole.USER:
+        // Regular users can only see projects they're assigned to
+        return projects.filter(p => 
+          p.assignedUsers?.some(assignedUser => assignedUser.id === user.id) ||
+          p.assignedUserIds?.includes(user.id)
+        );
+      
+      default:
+        return [];
+    }
+  }, [user, projects]);
+
+  // Filter tasks based on user role
+  const filteredTasks = useMemo(() => {
+    if (!user || !tasks.length) return [];
+    
+    switch (user.role) {
+      case UserRole.SUPER_ADMIN:
+        // Super admin can see all tasks
+        return tasks;
+      
+      case UserRole.PROJECT_ADMIN:
+        // Project admin can see tasks from projects they admin
+        return tasks.filter(task => 
+          task.project?.projectAdmin?.id === user.id
+        );
+      
+      case UserRole.USER:
+        // Regular users can only see tasks from projects they're assigned to
+        return tasks.filter(task => 
+          task.project?.assignedUsers?.some(assignedUser => assignedUser.id === user.id) ||
+          task.project?.assignedUserIds?.includes(user.id)
+        );
+      
+      default:
+        return [];
+    }
+  }, [user, tasks]);
 
   useEffect(() => {
     // Always fetch projects to ensure we have the list for the selector
@@ -130,37 +185,21 @@ const Tasks: React.FC = () => {
     );
   }
 
-  if (!activeProject && projects.length > 0) {
+  if (!user) {
     return (
       <Container maxWidth="lg">
-        <Box sx={{ my: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Select a Project
-          </Typography>
-          <FormControl fullWidth sx={{ maxWidth: 400 }}>
-            <InputLabel>Choose a project to view tasks</InputLabel>
-            <Select
-              value=""
-              label="Choose a project to view tasks"
-              onChange={handleProjectChange}
-            >
-              {projects.map((project) => (
-                <MenuItem key={project.id} value={project.id}>
-                  {project.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          User information not available.
+        </Alert>
       </Container>
     );
   }
 
-  if (!activeProject) {
+  if (filteredProjects.length === 0) {
     return (
       <Container maxWidth="lg">
         <Alert severity="warning" sx={{ mt: 2 }}>
-          No project selected. Please select a project first.
+          No projects available for your role ({user.role}).
         </Alert>
       </Container>
     );
@@ -169,36 +208,78 @@ const Tasks: React.FC = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1">
-            Tasks - {activeProject?.name}
+        {/* Project Selection Dropdown - Always Visible */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Tasks
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenTaskForm}
-          >
-            Add Task
-          </Button>
+          <Box display="flex" alignItems="center" gap={2}>
+            <FormControl sx={{ minWidth: 300 }}>
+              <InputLabel>Select Project</InputLabel>
+              <Select
+                value={activeProjectId || ''}
+                label="Select Project"
+                onChange={handleProjectChange}
+              >
+                {filteredProjects.map((project) => (
+                  <MenuItem key={project.id} value={project.id}>
+                    {project.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {user && (
+              <Chip 
+                label={`Role: ${user.role}`} 
+                color="primary" 
+                variant="outlined"
+              />
+            )}
+          </Box>
         </Box>
 
+        {/* Project Info and Add Task Button */}
+        {activeProject && (
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box>
+              <Typography variant="h5" component="h2">
+                {activeProject.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {activeProject.description}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenTaskForm}
+            >
+              Add Task
+            </Button>
+          </Box>
+        )}
+
+        {/* Task List */}
         <TaskList 
-          tasks={tasks} 
+          tasks={filteredTasks} 
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
           onAdd={handleOpenTaskForm}
         />
 
-        <TaskForm
-          open={taskFormOpen}
-          onClose={handleCloseTaskForm}
-          onSubmit={handleCreateTask}
-          onCancel={handleCancelTaskForm}
-          project={activeProject}
-          users={users}
-          pages={pages}
-          selectedPageId={pages && pages.length > 0 ? pages[0].id : undefined}
-        />
+        {/* Task Form */}
+        {activeProject && (
+          <TaskForm
+            open={taskFormOpen}
+            onClose={handleCloseTaskForm}
+            onSubmit={handleCreateTask}
+            onCancel={handleCancelTaskForm}
+            project={activeProject}
+            users={users}
+            pages={pages}
+            selectedPageId={pages && pages.length > 0 ? pages[0].id : undefined}
+          />
+        )}
       </Box>
     </Container>
   );
