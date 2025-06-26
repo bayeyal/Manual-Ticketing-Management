@@ -102,8 +102,8 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onAdd }) =
                   </Box>
                 }
                 secondary={
-                  <Box>
-                    <Box sx={{ mb: 1 }}>
+                  <Box component="div">
+                    <Box component="div" sx={{ mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">
                         {task.description}
                       </Typography>
@@ -116,7 +116,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onAdd }) =
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="caption" color="text.secondary">
-                          Page: No page assigned
+                          Page: {task.page ? task.page.url : 'No page assigned'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>
