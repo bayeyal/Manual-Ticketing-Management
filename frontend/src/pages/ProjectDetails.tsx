@@ -46,6 +46,8 @@ const ProjectDetails: React.FC = () => {
     }
   }, [dispatch, id]);
 
+  // Note: Project data refresh is now handled in the updateTask action
+
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
       case ProjectStatus.NEW:
@@ -145,28 +147,44 @@ const ProjectDetails: React.FC = () => {
   const handleTaskSubmit = async (data: Partial<Task>) => {
     try {
       // Clean the task data before sending to backend
-      const cleanTaskData = {
-        ...data,
-        // Convert full objects to IDs
-        assignedToId: data.assignedTo?.id,
-        auditorId: data.auditor?.id,
-        // Remove the full objects to avoid backend validation errors
-        assignedTo: undefined,
-        auditor: undefined,
+      const { assignedTo, auditor, ...cleanTaskData } = data;
+      
+      // Add the IDs separately
+      const finalTaskData = {
+        ...cleanTaskData,
+        assignedToId: assignedTo?.id,
+        auditorId: auditor?.id,
       };
 
       if (selectedTask) {
-        await dispatch(updateTask({ id: selectedTask.id, task: cleanTaskData }));
+        await dispatch(updateTask({ id: selectedTask.id, task: finalTaskData }));
+        // Explicitly refresh project data to get updated progress
+        if (id) {
+          await dispatch(fetchProjectById(parseInt(id)));
+        }
       } else {
         if (!project?.id) {
           console.error('Project ID is missing');
           return;
         }
+        if (!selectedPageId) {
+          console.error('Page ID is missing');
+          alert('Please select a page for the task.');
+          return;
+        }
         const taskData = {
-          ...cleanTaskData,
+          ...finalTaskData,
           projectId: project.id,
+          pageId: selectedPageId,
         };
+        console.log('ProjectDetails: Creating task with data:', JSON.stringify(taskData, null, 2));
+        console.log('ProjectDetails: pageId being sent:', selectedPageId);
+        console.log('ProjectDetails: projectId being sent:', project.id);
         await dispatch(createTask(taskData));
+        // Refetch tasks for the project to ensure UI is updated
+        if (id) {
+          await dispatch(fetchTasks(parseInt(id)));
+        }
       }
       setIsTaskDialogOpen(false);
       setSelectedPageId(null);
@@ -202,6 +220,10 @@ const ProjectDetails: React.FC = () => {
 
       console.log('Updating task status:', taskId, 'with data:', cleanTaskData);
       await dispatch(updateTask({ id: taskId, task: cleanTaskData }));
+      // Explicitly refresh project data to get updated progress
+      if (id) {
+        await dispatch(fetchProjectById(parseInt(id)));
+      }
     } catch (error) {
       console.error('Error updating task status:', error);
     }

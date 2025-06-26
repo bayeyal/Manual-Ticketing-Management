@@ -38,28 +38,33 @@ const Tasks: React.FC = () => {
 
   const handleCreateTask = async (taskData: Partial<Task>) => {
     if (projectId && project) {
+      // Find a page to associate with the task
+      const page = pages && pages.length > 0 ? pages[0] : undefined;
+      if (!page) {
+        alert('No page available to associate with the task. Please create a page first.');
+        return;
+      }
       // Convert Partial<Task> to CreateTaskDto
       const createTaskDto: CreateTaskDto = {
         title: taskData.title!,
         description: taskData.description!,
         wcagCriteria: taskData.wcagCriteria!,
-        wcagVersion: taskData.wcagVersion!,
-        conformanceLevel: taskData.conformanceLevel!,
         defectSummary: taskData.defectSummary,
         recommendation: taskData.recommendation,
         userImpact: taskData.userImpact,
         comments: taskData.comments,
         disabilityType: taskData.disabilityType,
         screenshot: taskData.screenshot,
+        screenshotTitle: taskData.screenshotTitle,
         severity: taskData.severity,
         status: taskData.status,
         priority: taskData.priority,
         assignedToId: taskData.assignedTo?.id,
         auditorId: taskData.auditor?.id,
         projectId: parseInt(projectId),
+        pageId: page.id,
         dueDate: taskData.dueDate || new Date().toISOString().split('T')[0],
       };
-      
       await dispatch(createTask(createTaskDto));
     }
   };
@@ -145,6 +150,7 @@ const Tasks: React.FC = () => {
           project={project}
           users={users}
           pages={pages}
+          selectedPageId={pages && pages.length > 0 ? pages[0].id : undefined}
         />
       </Box>
     </Container>

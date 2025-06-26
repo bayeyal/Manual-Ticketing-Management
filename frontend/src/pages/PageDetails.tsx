@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
-import { fetchPageById } from '../store/slices/pagesSlice';
+import { fetchPageById, updatePage } from '../store/slices/pagesSlice';
 import { fetchTasksByPage, createTask, updateTask, deleteTask, sendTaskMessage } from '../store/slices/tasksSlice';
 import { fetchUsers } from '../store/slices/usersSlice';
 import { fetchProjectById } from '../store/slices/projectsSlice';
@@ -16,12 +16,17 @@ import {
   Grid,
   Chip,
   Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Edit as EditIcon } from '@mui/icons-material';
 import TaskAccordion from '../components/TaskAccordion/index';
 import TaskForm from '../components/TaskForm';
 import { Task, TaskStatus } from '../types/task';
-import { Page } from '../types/page';
+import { Page, UpdatePageDto } from '../types/page';
+import { useForm, Controller } from 'react-hook-form';
 
 const PageDetails: React.FC = () => {
   const { projectId, pageId } = useParams<{ projectId: string; pageId: string }>();
@@ -33,15 +38,43 @@ const PageDetails: React.FC = () => {
   const { currentProject: project } = useAppSelector((state) => state.projects);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEditForm } = useForm<UpdatePageDto>({
+    defaultValues: {
+      title: '',
+      url: '',
+      description: '',
+    }
+  });
 
   useEffect(() => {
     if (pageId && projectId) {
+      console.log('PageDetails: Fetching data for pageId:', pageId, 'projectId:', projectId);
       dispatch(fetchPageById(parseInt(pageId)));
       dispatch(fetchTasksByPage(parseInt(pageId)));
       dispatch(fetchUsers());
       dispatch(fetchProjectById(parseInt(projectId)));
     }
   }, [dispatch, pageId, projectId]);
+
+  const handleEditPage = () => {
+    if (page) {
+      resetEditForm({
+        title: page.title,
+        url: page.url,
+        description: page.description || '',
+      });
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleEditPageSubmit = async (data: UpdatePageDto) => {
+    if (page) {
+      await dispatch(updatePage({ id: page.id, pageData: data }));
+      setIsEditDialogOpen(false);
+    }
+  };
 
   const handleAddTask = () => {
     setSelectedTask(undefined);
@@ -64,25 +97,35 @@ const PageDetails: React.FC = () => {
   const handleTaskSubmit = async (data: Partial<Task>) => {
     try {
       // Clean the task data before sending to backend
-      const cleanTaskData = {
-        ...data,
-        // Convert full objects to IDs
-        assignedToId: data.assignedTo?.id,
-        auditorId: data.auditor?.id,
+      const { assignedTo, auditor, ...cleanTaskData } = data;
+      
+      // Add the IDs separately
+      const finalTaskData = {
+        ...cleanTaskData,
+        assignedToId: assignedTo?.id,
+        auditorId: auditor?.id,
       };
 
       if (selectedTask) {
-        await dispatch(updateTask({ id: selectedTask.id, task: cleanTaskData }));
+        await dispatch(updateTask({ id: selectedTask.id, task: finalTaskData }));
       } else {
         if (!page?.id || !project?.id) {
           console.error('Page ID or Project ID is missing');
           return;
         }
         const taskData = {
-          ...cleanTaskData,
+          ...finalTaskData,
           projectId: project.id,
+          pageId: page.id,
         };
+        console.log('PageDetails: Creating task with data:', JSON.stringify(taskData, null, 2));
+        console.log('PageDetails: pageId being sent:', page.id);
+        console.log('PageDetails: projectId being sent:', project.id);
         await dispatch(createTask(taskData));
+        // Refetch tasks for this page to ensure UI is updated
+        if (pageId) {
+          await dispatch(fetchTasksByPage(parseInt(pageId)));
+        }
       }
       setIsTaskDialogOpen(false);
     } catch (error) {
@@ -128,6 +171,10 @@ const PageDetails: React.FC = () => {
       alert(`Failed to update task status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+  console.log('PageDetails: Current tasks:', tasks);
+  console.log('PageDetails: Tasks loading:', tasksLoading);
+  console.log('PageDetails: Tasks error:', tasksError);
 
   if (pageLoading || tasksLoading || usersLoading) {
     return (
@@ -177,13 +224,25 @@ const PageDetails: React.FC = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h5" component="div">Page URL</Typography>
+                <Typography variant="h5" component="div">{page.title}</Typography>
+                <Button
+                  startIcon={<EditIcon />}
+                  variant="outlined"
+                  onClick={handleEditPage}
+                >
+                  Edit Page
+                </Button>
               </Box>
               <Typography variant="body1" color="text.secondary" component="div" paragraph>
                 <a href={page.url} target="_blank" rel="noopener noreferrer">
                   {page.url}
                 </a>
               </Typography>
+              {page.description && (
+                <Typography variant="body1" component="div" paragraph>
+                  {page.description}
+                </Typography>
+              )}
               
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
@@ -236,10 +295,83 @@ const PageDetails: React.FC = () => {
             users={users}
             project={project}
             pages={page ? [page] : []}
+            selectedPageId={page?.id}
             onSubmit={handleTaskSubmit}
             onCancel={() => setIsTaskDialogOpen(false)}
           />
         </Box>
+      </Dialog>
+
+      {/* Edit Page Dialog */}
+      <Dialog open={isEditDialogOpen} onClose={() => setIsEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Page</DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleEditSubmit(handleEditPageSubmit)} sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Controller
+                  name="title"
+                  control={editControl}
+                  rules={{ required: 'Title is required' }}
+                  render={({ field, fieldState: { error } }) => (
+                    <TextField
+                      {...field}
+                      label="Page Title"
+                      fullWidth
+                      error={!!error}
+                      helperText={error?.message}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Controller
+                  name="url"
+                  control={editControl}
+                  rules={{ 
+                    required: 'URL is required',
+                    pattern: {
+                      value: /^https?:\/\/.+/,
+                      message: 'Please enter a valid URL starting with http:// or https://'
+                    }
+                  }}
+                  render={({ field, fieldState: { error } }) => (
+                    <TextField
+                      {...field}
+                      label="Page URL"
+                      fullWidth
+                      error={!!error}
+                      helperText={error?.message}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Controller
+                  name="description"
+                  control={editControl}
+                  render={({ field, fieldState: { error } }) => (
+                    <TextField
+                      {...field}
+                      label="Description"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      error={!!error}
+                      helperText={error?.message}
+                    />
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleEditSubmit(handleEditPageSubmit)} variant="contained">
+            Update
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );

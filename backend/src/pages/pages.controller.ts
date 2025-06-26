@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PagesService } from './pages.service';
 import { CreatePageDto } from './dto/create-page.dto';
@@ -26,6 +28,20 @@ export class PagesController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN, UserRole.PROJECT_ADMIN)
   create(@Body() createPageDto: CreatePageDto) {
     return this.pagesService.create(createPageDto);
+  }
+
+  @Post('sitemap')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN, UserRole.PROJECT_ADMIN)
+  async createFromSitemap(@Body() data: { projectId: number; sitemapXml: string }) {
+    try {
+      return await this.pagesService.createFromSitemap(data.projectId, data.sitemapXml);
+    } catch (error) {
+      console.error('Sitemap upload error:', error);
+      throw new HttpException(
+        error.message || 'Failed to process sitemap',
+        HttpStatus.BAD_REQUEST
+      );
+    }
   }
 
   @Get()

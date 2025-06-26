@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
+import { Task } from '../../tasks/entities/task.entity';
 
 @Entity()
 export class Page {
@@ -7,7 +8,13 @@ export class Page {
   id: number;
 
   @Column()
+  title: string;
+
+  @Column()
   url: string;
+
+  @Column('text', { nullable: true })
+  description?: string;
 
   @ManyToOne(() => Project, project => project.pages, {
     onDelete: 'CASCADE',
@@ -15,6 +22,9 @@ export class Page {
   })
   @JoinColumn({ name: 'projectId' })
   project: Project;
+
+  @OneToMany(() => Task, task => task.page)
+  tasks: Task[];
 
   @CreateDateColumn()
   createdAt: Date;

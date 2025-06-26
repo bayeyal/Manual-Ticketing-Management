@@ -40,6 +40,14 @@ export const createPage = createAsyncThunk(
   }
 );
 
+export const createFromSitemap = createAsyncThunk(
+  'pages/createFromSitemap',
+  async ({ projectId, sitemapXml }: { projectId: number; sitemapXml: string }) => {
+    const response = await pagesApi.createFromSitemap(projectId, sitemapXml);
+    return response;
+  }
+);
+
 export const updatePage = createAsyncThunk(
   'pages/updatePage',
   async ({ id, pageData }: { id: number; pageData: UpdatePageDto }) => {
@@ -107,6 +115,19 @@ const pagesSlice = createSlice({
       .addCase(createPage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to create page';
+      })
+      // Create from sitemap
+      .addCase(createFromSitemap.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createFromSitemap.fulfilled, (state, action) => {
+        state.loading = false;
+        state.pages.push(...action.payload);
+      })
+      .addCase(createFromSitemap.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to create pages from sitemap';
       })
       // Update page
       .addCase(updatePage.pending, (state) => {

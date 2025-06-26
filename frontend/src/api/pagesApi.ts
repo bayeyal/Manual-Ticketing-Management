@@ -15,6 +15,10 @@ export const pagesApi = {
     return api.post<Page>('/pages', data).then(res => res.data);
   },
 
+  createFromSitemap: (projectId: number, sitemapXml: string) => {
+    return api.post<Page[]>('/pages/sitemap', { projectId, sitemapXml }).then(res => res.data);
+  },
+
   update: (id: number, data: UpdatePageDto) => {
     return api.patch<Page>(`/pages/${id}`, data).then(res => res.data);
   },

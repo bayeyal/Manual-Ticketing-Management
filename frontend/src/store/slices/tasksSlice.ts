@@ -1,7 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Task } from '../../types/task';
+import { Task, CreateTaskDto } from '../../types/task';
 import { api, tasksApi } from '../../services/api';
 import { AxiosError } from 'axios';
+import { fetchProjectById, fetchProjects } from './projectsSlice';
+import { AppDispatch } from '../index';
 
 interface TasksState {
   tasks: Task[];
@@ -126,7 +128,7 @@ export const createTask = createAsyncThunk(
 
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ id, task }: { id: number; task: Partial<Task> }) => {
+  async ({ id, task }: { id: number; task: Partial<Task> }, { dispatch }) => {
     console.log('=== updateTask async thunk started ===');
     console.log('Updating task with ID:', id, 'and data:', JSON.stringify(task, null, 2));
     try {
@@ -134,6 +136,24 @@ export const updateTask = createAsyncThunk(
       console.log('=== Task updated successfully ===');
       console.log('Response:', response.data);
       console.log('=== updateTask async thunk completed successfully ===');
+      
+      // Always refresh project data to get updated progress
+      console.log('=== Refreshing project data ===');
+      try {
+        if (response.data.project?.id) {
+          console.log('Project ID from response:', response.data.project.id);
+          await dispatch(fetchProjectById(response.data.project.id));
+          console.log('=== Project data refreshed via fetchProjectById ===');
+        } else {
+          console.log('No project ID in response, refreshing projects list');
+          await dispatch(fetchProjects());
+          console.log('=== Projects list refreshed ===');
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing project data:', refreshError);
+        // Don't fail the task update if project refresh fails
+      }
+      
       return response.data;
     } catch (error) {
       console.error('=== updateTask async thunk failed ===');

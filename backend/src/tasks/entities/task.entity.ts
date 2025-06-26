@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
+import { Page } from '../../pages/entities/page.entity';
 
 export enum TaskStatus {
   NEW = 'NEW',
@@ -38,12 +39,6 @@ export class Task {
   @Column()
   wcagCriteria: string;
 
-  @Column()
-  wcagVersion: string;
-
-  @Column()
-  conformanceLevel: string;
-
   @Column('text', { nullable: true })
   defectSummary?: string;
 
@@ -61,6 +56,9 @@ export class Task {
 
   @Column({ nullable: true })
   screenshot?: string;
+
+  @Column({ nullable: true })
+  screenshotTitle?: string;
 
   @Column({
     type: 'enum',
@@ -97,6 +95,13 @@ export class Task {
   })
   @JoinColumn({ name: 'projectId' })
   project: Project;
+
+  @ManyToOne(() => Page, page => page.tasks, {
+    onDelete: 'CASCADE',
+    nullable: false
+  })
+  @JoinColumn({ name: 'pageId' })
+  page: Page;
 
   @OneToMany(() => TaskMessage, message => message.task)
   messages: TaskMessage[];

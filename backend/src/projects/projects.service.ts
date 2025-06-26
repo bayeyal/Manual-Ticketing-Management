@@ -145,32 +145,56 @@ export class ProjectsService {
   }
 
   async calculateAndUpdateProgress(projectId: number): Promise<number> {
+    console.log('=== PROGRESS CALCULATION STARTED ===');
     console.log('Calculating progress for project:', projectId);
     
-    // Get all tasks for the project directly
-    const allTasks = await this.tasksRepository.find({
-      where: { project: { id: projectId } }
-    });
-    
-    console.log(`Found ${allTasks.length} tasks for project ${projectId}`);
-    
-    if (allTasks.length === 0) {
-      console.log('No tasks found for project, setting progress to 0');
-      await this.projectsRepository.update(projectId, { progress: 0 });
-      return 0;
+    try {
+      // Get all tasks for the project directly
+      const allTasks = await this.tasksRepository.find({
+        where: { project: { id: projectId } },
+        relations: ['project']
+      });
+      
+      console.log(`Found ${allTasks.length} tasks for project ${projectId}`);
+      console.log('All tasks:', allTasks.map(task => ({ 
+        id: task.id, 
+        title: task.title, 
+        status: task.status,
+        projectId: task.project?.id 
+      })));
+      
+      if (allTasks.length === 0) {
+        console.log('No tasks found for project, setting progress to 0');
+        await this.projectsRepository.update(projectId, { progress: 0 });
+        console.log('=== PROGRESS CALCULATION COMPLETED: 0% ===');
+        return 0;
+      }
+      
+      // Count completed tasks
+      const completedTasks = allTasks.filter(task => task.status === TaskStatus.COMPLETED);
+      const progress = Math.round((completedTasks.length / allTasks.length) * 100);
+      
+      console.log(`=== Progress calculation for project ${projectId} ===`);
+      console.log(`Total tasks: ${allTasks.length}`);
+      console.log(`Completed tasks: ${completedTasks.length}`);
+      console.log(`Progress: ${completedTasks.length}/${allTasks.length} = ${progress}%`);
+      console.log('Completed task IDs:', completedTasks.map(task => task.id));
+      console.log('All task statuses:', allTasks.map(task => ({ id: task.id, status: task.status })));
+      
+      // Update the project's progress
+      console.log(`Updating project ${projectId} progress to ${progress}%`);
+      await this.projectsRepository.update(projectId, { progress });
+      console.log(`Successfully updated project ${projectId} progress to ${progress}%`);
+      
+      console.log('=== PROGRESS CALCULATION COMPLETED: ' + progress + '% ===');
+      return progress;
+    } catch (error) {
+      console.error('=== PROGRESS CALCULATION FAILED ===');
+      console.error('Error calculating progress for project', projectId, ':', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      throw error;
     }
-    
-    // Count completed tasks
-    const completedTasks = allTasks.filter(task => task.status === TaskStatus.COMPLETED);
-    const progress = Math.round((completedTasks.length / allTasks.length) * 100);
-    
-    console.log(`Project ${projectId}: ${completedTasks.length}/${allTasks.length} tasks completed = ${progress}%`);
-    console.log('Task statuses:', allTasks.map(task => ({ id: task.id, status: task.status })));
-    
-    // Update the project's progress
-    await this.projectsRepository.update(projectId, { progress });
-    
-    return progress;
   }
 
   async updateProjectStatus(projectId: number): Promise<Project> {

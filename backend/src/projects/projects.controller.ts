@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -39,7 +40,13 @@ export class ProjectsController {
 
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_ADMIN, UserRole.PROJECT_ADMIN)
-  update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
+  update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto, @Request() req) {
+    console.log('Update project request:', {
+      projectId: id,
+      user: req.user,
+      userRole: req.user?.role,
+      body: updateProjectDto
+    });
     return this.projectsService.update(+id, updateProjectDto);
   }
 

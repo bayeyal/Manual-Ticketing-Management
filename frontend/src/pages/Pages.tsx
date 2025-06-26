@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
-import { fetchPages, createPage, deletePage } from '../store/slices/pagesSlice';
+import { fetchPages, createPage, deletePage, updatePage, createFromSitemap } from '../store/slices/pagesSlice';
 import { fetchProjectById } from '../store/slices/projectsSlice';
-import { Page, CreatePageDto } from '../types/page';
+import { Page, CreatePageDto, UpdatePageDto } from '../types/page';
 import {
   Box,
   Container,
@@ -27,11 +27,13 @@ import {
   Grid,
   TextField,
   Link,
+  Divider,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, Upload as UploadIcon } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 
 type PageFormData = {
+  title: string;
   url: string;
 };
 
@@ -44,9 +46,13 @@ const Pages: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pageToDelete, setPageToDelete] = useState<Page | null>(null);
+  const [editingPage, setEditingPage] = useState<Page | null>(null);
+  const [sitemapFile, setSitemapFile] = useState<File | null>(null);
+  const [sitemapUploading, setSitemapUploading] = useState(false);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<PageFormData>({
     defaultValues: {
+      title: '',
       url: '',
     }
   });
@@ -60,11 +66,23 @@ const Pages: React.FC = () => {
 
   const handleOpen = () => {
     reset();
+    setEditingPage(null);
+    setOpen(true);
+  };
+
+  const handleEditClick = (page: Page, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPage(page);
+    reset({
+      title: page.title,
+      url: page.url,
+    });
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
+    setEditingPage(null);
   };
 
   const handleDeleteClick = (page: Page) => {
@@ -87,12 +105,62 @@ const Pages: React.FC = () => {
 
   const onSubmit = async (data: PageFormData) => {
     if (projectId) {
-      const pageData: CreatePageDto = {
-        url: data.url,
-        projectId: parseInt(projectId)
-      };
-      await dispatch(createPage(pageData));
+      if (editingPage) {
+        // Update existing page
+        const updateData: UpdatePageDto = {
+          title: data.title,
+          url: data.url,
+        };
+        await dispatch(updatePage({ id: editingPage.id, pageData: updateData }));
+      } else {
+        // Create new page
+        const pageData: CreatePageDto = {
+          title: data.title,
+          url: data.url,
+          projectId: parseInt(projectId)
+        };
+        await dispatch(createPage(pageData));
+      }
       handleClose();
+    }
+  };
+
+  const handleSitemapFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check if it's an XML file by extension or MIME type
+      const isXml = file.name.toLowerCase().endsWith('.xml') || 
+                   file.type === 'text/xml' || 
+                   file.type === 'application/xml';
+      
+      if (isXml) {
+        setSitemapFile(file);
+      } else {
+        alert('Please select a valid XML file (.xml extension)');
+        // Reset file input
+        event.target.value = '';
+      }
+    }
+  };
+
+  const handleSitemapUpload = async () => {
+    if (!sitemapFile || !projectId) return;
+
+    setSitemapUploading(true);
+    try {
+      const fileContent = await sitemapFile.text();
+      await dispatch(createFromSitemap({ projectId: parseInt(projectId), sitemapXml: fileContent }));
+      setSitemapFile(null);
+      // Reset file input
+      const fileInput = document.getElementById('sitemap-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      alert('Sitemap uploaded successfully! Pages have been created.');
+    } catch (error: any) {
+      console.error('Failed to upload sitemap:', error);
+      const errorMessage = error?.message || error?.error || 'Failed to upload sitemap';
+      alert(`Upload failed: ${errorMessage}`);
+    } finally {
+      setSitemapUploading(false);
     }
   };
 
@@ -134,20 +202,56 @@ const Pages: React.FC = () => {
           </Typography>
         </Box>
 
-        <Box display="flex" justifyContent="flex-end" mb={3}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpen}
-          >
-            Add Page
-          </Button>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpen}
+            >
+              Add Page
+            </Button>
+            <Divider orientation="vertical" flexItem />
+            <Box display="flex" alignItems="center" gap={1}>
+              <input
+                id="sitemap-file-input"
+                type="file"
+                accept=".xml"
+                onChange={handleSitemapFileChange}
+                style={{ display: 'none' }}
+              />
+              <Button
+                variant="outlined"
+                component="label"
+                htmlFor="sitemap-file-input"
+                startIcon={<UploadIcon />}
+              >
+                Select Sitemap
+              </Button>
+              {sitemapFile && (
+                <Button
+                  variant="contained"
+                  onClick={handleSitemapUpload}
+                  disabled={sitemapUploading}
+                  startIcon={sitemapUploading ? <CircularProgress size={16} /> : <UploadIcon />}
+                >
+                  {sitemapUploading ? 'Uploading...' : 'Upload Sitemap'}
+                </Button>
+              )}
+            </Box>
+          </Box>
+          {sitemapFile && (
+            <Typography variant="body2" color="text.secondary">
+              Selected: {sitemapFile.name}
+            </Typography>
+          )}
         </Box>
 
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Title</TableCell>
                 <TableCell>URL</TableCell>
                 <TableCell>Tasks Count</TableCell>
                 <TableCell>Created</TableCell>
@@ -162,6 +266,7 @@ const Pages: React.FC = () => {
                   onClick={() => handlePageClick(page.id)}
                   sx={{ cursor: 'pointer' }}
                 >
+                  <TableCell>{page.title}</TableCell>
                   <TableCell>
                     <a
                       href={page.url}
@@ -177,6 +282,13 @@ const Pages: React.FC = () => {
                     {new Date(page.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleEditClick(page, e)}
+                      sx={{ mr: 1 }}
+                    >
+                      <EditIcon />
+                    </IconButton>
                     <IconButton
                       size="small"
                       onClick={(e) => {
@@ -195,10 +307,28 @@ const Pages: React.FC = () => {
 
         {/* Create Page Dialog */}
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-          <DialogTitle>Create Page</DialogTitle>
+          <DialogTitle>{editingPage ? 'Edit Page' : 'Create Page'}</DialogTitle>
           <DialogContent>
             <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 2 }}>
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Controller
+                    name="title"
+                    control={control}
+                    rules={{ 
+                      required: 'Title is required'
+                    }}
+                    render={({ field, fieldState: { error } }) => (
+                      <TextField
+                        {...field}
+                        label="Page Title"
+                        fullWidth
+                        error={!!error}
+                        helperText={error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
                 <Grid item xs={12}>
                   <Controller
                     name="url"
@@ -227,7 +357,7 @@ const Pages: React.FC = () => {
           <DialogActions>
             <Button onClick={handleClose}>Cancel</Button>
             <Button onClick={handleSubmit(onSubmit)} variant="contained">
-              Create
+              {editingPage ? 'Update' : 'Create'}
             </Button>
           </DialogActions>
         </Dialog>

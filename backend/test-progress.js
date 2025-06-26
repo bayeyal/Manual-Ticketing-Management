@@ -1,67 +1,73 @@
 const { Client } = require('pg');
 
-async function testProgressCalculation() {
-  const client = new Client({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    user: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_DATABASE || 'accessibility_db'
-  });
+// PostgreSQL connection configuration
+const client = new Client({
+  host: 'localhost',
+  port: 5432,
+  database: 'accessibility_db',
+  user: 'postgres', // replace with your username
+  password: 'password', // replace with your password
+});
 
+async function testProgress() {
   try {
     await client.connect();
-    console.log('Connected to database for testing...');
+    console.log('Connected to PostgreSQL');
 
-    // Test project 1
-    const projectId = 1;
+    // Test project 2
+    const projectId = 2;
+
+    // Get all tasks for project 2
+    const tasksQuery = `
+      SELECT id, title, status, "projectId", "pageId"
+      FROM task 
+      WHERE "projectId" = $1
+      ORDER BY id
+    `;
     
-    // Get all pages for project 1
-    const pagesResult = await client.query(`
-      SELECT id, url FROM page WHERE "projectId" = $1
-    `, [projectId]);
+    const tasksResult = await client.query(tasksQuery, [projectId]);
+    const tasks = tasksResult.rows;
     
-    console.log(`Found ${pagesResult.rows.length} pages for project ${projectId}:`);
-    pagesResult.rows.forEach(page => {
-      console.log(`  Page ${page.id}: ${page.url}`);
+    console.log(`\n=== Project ${projectId} Tasks ===`);
+    console.log(`Total tasks found: ${tasks.length}`);
+    
+    tasks.forEach(task => {
+      console.log(`Task ${task.id}: "${task.title}" - Status: ${task.status} - PageId: ${task.pageid}`);
     });
 
-    // Get all tasks from all pages in project 1
-    const tasksResult = await client.query(`
-      SELECT t.id, t.title, t.status, t."pageId", p.url as page_url
-      FROM task t
-      JOIN page p ON t."pageId" = p.id
-      WHERE p."projectId" = $1
-    `, [projectId]);
+    // Count completed tasks
+    const completedTasks = tasks.filter(task => task.status === 'COMPLETED');
+    const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
     
-    console.log(`\nFound ${tasksResult.rows.length} tasks for project ${projectId}:`);
-    tasksResult.rows.forEach(task => {
-      console.log(`  Task ${task.id}: "${task.title}" - Status: ${task.status} (Page: ${task.page_url})`);
-    });
+    console.log(`\n=== Progress Calculation ===`);
+    console.log(`Total tasks: ${tasks.length}`);
+    console.log(`Completed tasks: ${completedTasks.length}`);
+    console.log(`Progress: ${completedTasks.length}/${tasks.length} = ${progress}%`);
 
-    // Calculate progress
-    const totalTasks = tasksResult.rows.length;
-    const completedTasks = tasksResult.rows.filter(task => task.status === 'COMPLETED').length;
-    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    // Check current project progress
+    const projectQuery = `
+      SELECT id, name, progress, status
+      FROM project 
+      WHERE id = $1
+    `;
     
-    console.log(`\nProgress Calculation:`);
-    console.log(`  Total tasks: ${totalTasks}`);
-    console.log(`  Completed tasks: ${completedTasks}`);
-    console.log(`  Progress: ${progress}%`);
+    const projectResult = await client.query(projectQuery, [projectId]);
+    const project = projectResult.rows[0];
+    
+    console.log(`\n=== Current Project State ===`);
+    console.log(`Project ${project.id}: "${project.name}"`);
+    console.log(`Current progress in DB: ${project.progress}%`);
+    console.log(`Current status: ${project.status}`);
 
-    // Update project progress
-    await client.query(`
-      UPDATE project SET progress = $1 WHERE id = $2
-    `, [progress, projectId]);
+    // Update progress
+    const updateQuery = `
+      UPDATE project 
+      SET progress = $1 
+      WHERE id = $2
+    `;
     
-    console.log(`\nUpdated project ${projectId} progress to ${progress}%`);
-
-    // Verify the update
-    const projectResult = await client.query(`
-      SELECT id, name, progress FROM project WHERE id = $1
-    `, [projectId]);
-    
-    console.log(`\nProject ${projectId} current progress: ${projectResult.rows[0]?.progress}%`);
+    await client.query(updateQuery, [progress, projectId]);
+    console.log(`\nUpdated project progress to ${progress}%`);
 
   } catch (error) {
     console.error('Error:', error);
@@ -70,4 +76,4 @@ async function testProgressCalculation() {
   }
 }
 
-testProgressCalculation(); 
+testProgress(); 

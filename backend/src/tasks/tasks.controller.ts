@@ -36,8 +36,6 @@ export class TasksController {
       console.log('severity:', createTaskDto.severity);
       console.log('priority:', createTaskDto.priority);
       console.log('wcagCriteria:', createTaskDto.wcagCriteria);
-      console.log('wcagVersion:', createTaskDto.wcagVersion);
-      console.log('conformanceLevel:', createTaskDto.conformanceLevel);
       console.log('dueDate:', createTaskDto.dueDate);
       console.log('assignedToId:', createTaskDto.assignedToId);
 
@@ -102,6 +100,12 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   findByProject(@Param('projectId') projectId: string) {
     return this.tasksService.findByProject(+projectId);
+  }
+
+  @Get('page/:pageId')
+  @UseGuards(JwtAuthGuard)
+  findByPage(@Param('pageId') pageId: string) {
+    return this.tasksService.findByPage(+pageId);
   }
 
   @Post(':id/users/:userId')

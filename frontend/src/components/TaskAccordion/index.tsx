@@ -291,7 +291,7 @@ const TaskAccordion: React.FC<TaskAccordionProps> = ({
               
               <Typography variant="subtitle2" gutterBottom>WCAG Details</Typography>
               <Typography variant="body2" paragraph>
-                Criteria: {task.wcagCriteria} (Level {task.conformanceLevel})
+                Criteria: {task.wcagCriteria}
               </Typography>
               
               {task.defectSummary && (

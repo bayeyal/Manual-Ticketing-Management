@@ -111,7 +111,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onAdd }) =
                     <Grid container spacing={1}>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="caption" color="text.secondary">
-                          WCAG: {task.wcagCriteria} (Level {task.conformanceLevel})
+                          WCAG: {task.wcagCriteria}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>

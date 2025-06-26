@@ -1,21 +1,18 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsDateString } from 'class-validator';
-import { TaskSeverity, TaskStatus, TaskPriority } from '../entities/task.entity';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString, IsNumber } from 'class-validator';
+import { TaskStatus, TaskSeverity, TaskPriority } from '../entities/task.entity';
 
 export class CreateTaskDto {
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsString()
+  @IsNotEmpty()
   description: string;
 
   @IsString()
+  @IsNotEmpty()
   wcagCriteria: string;
-
-  @IsString()
-  wcagVersion: string;
-
-  @IsString()
-  conformanceLevel: string;
 
   @IsString()
   @IsOptional()
@@ -41,6 +38,10 @@ export class CreateTaskDto {
   @IsOptional()
   screenshot?: string;
 
+  @IsString()
+  @IsOptional()
+  screenshotTitle?: string;
+
   @IsEnum(TaskSeverity)
   @IsOptional()
   severity?: TaskSeverity;
@@ -62,8 +63,14 @@ export class CreateTaskDto {
   auditorId?: number;
 
   @IsNumber()
+  @IsNotEmpty()
   projectId: number;
 
+  @IsNumber()
+  @IsNotEmpty()
+  pageId: number;
+
   @IsDateString()
+  @IsNotEmpty()
   dueDate: string;
 } 

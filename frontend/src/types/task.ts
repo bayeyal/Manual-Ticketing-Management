@@ -1,6 +1,7 @@
 import { BaseEntity } from './base';
 import { User } from './user';
 import { Project } from './project';
+import { Page } from './page';
 
 export enum TaskStatus {
   NEW = 'NEW',
@@ -37,63 +38,45 @@ export interface Task extends BaseEntity {
   title: string;
   description: string;
   wcagCriteria: string;
-  wcagVersion: string;
-  conformanceLevel: string;
   defectSummary?: string;
   recommendation?: string;
   userImpact?: string;
   comments?: string;
   disabilityType?: string;
   screenshot?: string;
+  screenshotTitle?: string;
   severity: TaskSeverity;
   status: TaskStatus;
   priority: TaskPriority;
   assignedTo?: User;
   auditor?: User;
   project: Project;
+  page: Page;
+  messages: TaskMessage[];
   dueDate: string;
   createdAt: string;
   updatedAt: string;
-  messages?: TaskMessage[];
 }
 
 export interface CreateTaskDto {
   title: string;
   description: string;
   wcagCriteria: string;
-  wcagVersion: string;
-  conformanceLevel: string;
   defectSummary?: string;
   recommendation?: string;
   userImpact?: string;
   comments?: string;
   disabilityType?: string;
   screenshot?: string;
+  screenshotTitle?: string;
   severity?: TaskSeverity;
   status?: TaskStatus;
   priority?: TaskPriority;
   assignedToId?: number;
   auditorId?: number;
   projectId: number;
+  pageId: number;
   dueDate: string;
 }
 
-export interface UpdateTaskDto {
-  title?: string;
-  description?: string;
-  wcagCriteria?: string;
-  wcagVersion?: string;
-  conformanceLevel?: string;
-  defectSummary?: string;
-  recommendation?: string;
-  userImpact?: string;
-  comments?: string;
-  disabilityType?: string;
-  screenshot?: string;
-  severity?: TaskSeverity;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  assignedToId?: number;
-  auditorId?: number;
-  dueDate?: string;
-} 
+export interface UpdateTaskDto extends Partial<CreateTaskDto> {} 

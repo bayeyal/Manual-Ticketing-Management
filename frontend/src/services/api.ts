@@ -3,7 +3,7 @@ import { CreateProjectDto, Project } from '../types/project';
 import { CreateTaskDto, Task } from '../types/task';
 
 const api = axios.create({
-  baseURL: `${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/api`,
+  baseURL: `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,6 +31,10 @@ api.interceptors.response.use(
       // Handle unauthorized access
       localStorage.removeItem('token');
       window.location.href = '/login';
+    } else if (error.response?.status === 403) {
+      // Handle forbidden access - show specific error message
+      console.error('Access forbidden:', error.response.data);
+      // You can dispatch a notification here or handle it in the component
     }
     return Promise.reject(error);
   }
@@ -89,7 +93,7 @@ export const projectsApi = {
         dueDate: new Date(project.dueDate).toISOString(),
       };
       console.log('Updating project with data:', projectData);
-      const response = await api.put<Project>(`/projects/${id}`, projectData);
+      const response = await api.patch<Project>(`/projects/${id}`, projectData);
       return response;
     } catch (error) {
       if (error instanceof AxiosError && error.response?.data) {
@@ -175,7 +179,6 @@ export const tasksApi = {
         projectId: Number(task.projectId), // Ensure projectId is a number
         assignedToId: task.assignedToId ? Number(task.assignedToId) : undefined, // Convert to number or undefined
         auditorId: task.auditorId ? Number(task.auditorId) : undefined, // Convert to number or undefined
-        conformanceLevel: task.conformanceLevel?.toUpperCase(), // Ensure conformance level is uppercase
         // Remove any nested objects that shouldn't be sent
         assignedTo: undefined,
         auditor: undefined,
