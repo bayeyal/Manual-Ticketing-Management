@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store';
-import { fetchTasks, createTask } from '../store/slices/tasksSlice';
+import { fetchTasks, createTask, updateTask } from '../store/slices/tasksSlice';
 import { fetchUsers } from '../store/slices/usersSlice';
 import { fetchProjectById, fetchProjects } from '../store/slices/projectsSlice';
 import { fetchPages } from '../store/slices/pagesSlice';
@@ -36,6 +36,7 @@ const Tasks: React.FC = () => {
   const { pages } = useAppSelector((state) => state.pages);
   const { user } = useAppSelector((state) => state.auth);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Determine which project to use
   const activeProject = project || selectedProject;
@@ -57,8 +58,7 @@ const Tasks: React.FC = () => {
       case UserRole.USER:
         // Regular users can only see projects they're assigned to
         return projects.filter(p => 
-          p.assignedUsers?.some(assignedUser => assignedUser.id === user.id) ||
-          p.assignedUserIds?.includes(user.id)
+          p.assignedUsers?.some(assignedUser => assignedUser.id === user.id)
         );
       
       default:
@@ -84,8 +84,7 @@ const Tasks: React.FC = () => {
       case UserRole.USER:
         // Regular users can only see tasks from projects they're assigned to
         return tasks.filter(task => 
-          task.project?.assignedUsers?.some(assignedUser => assignedUser.id === user.id) ||
-          task.project?.assignedUserIds?.includes(user.id)
+          task.project?.assignedUsers?.some(assignedUser => assignedUser.id === user.id)
         );
       
       default:
@@ -145,21 +144,50 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const handleUpdateTask = async (taskData: Partial<Task>) => {
+    if (editingTask && activeProjectId) {
+      // Convert Partial<Task> to UpdateTaskDto
+      const updateTaskDto = {
+        title: taskData.title,
+        description: taskData.description,
+        wcagCriteria: taskData.wcagCriteria,
+        defectSummary: taskData.defectSummary,
+        recommendation: taskData.recommendation,
+        userImpact: taskData.userImpact,
+        comments: taskData.comments,
+        disabilityType: taskData.disabilityType,
+        screenshot: taskData.screenshot,
+        screenshotTitle: taskData.screenshotTitle,
+        severity: taskData.severity,
+        status: taskData.status,
+        priority: taskData.priority,
+        assignedToId: taskData.assignedTo?.id,
+        auditorId: taskData.auditor?.id,
+        dueDate: taskData.dueDate,
+      };
+      await dispatch(updateTask({ id: editingTask.id, task: updateTaskDto }));
+    }
+  };
+
   const handleOpenTaskForm = () => {
+    setEditingTask(null);
     setTaskFormOpen(true);
   };
 
   const handleCloseTaskForm = () => {
     setTaskFormOpen(false);
+    setEditingTask(null);
   };
 
   const handleCancelTaskForm = () => {
     setTaskFormOpen(false);
+    setEditingTask(null);
   };
 
-  const handleEditTask = (task: any) => {
-    // TODO: Implement edit functionality
+  const handleEditTask = (task: Task) => {
     console.log('Edit task:', task);
+    setEditingTask(task);
+    setTaskFormOpen(true);
   };
 
   const handleDeleteTask = (taskId: number) => {
@@ -272,12 +300,13 @@ const Tasks: React.FC = () => {
           <TaskForm
             open={taskFormOpen}
             onClose={handleCloseTaskForm}
-            onSubmit={handleCreateTask}
+            onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
             onCancel={handleCancelTaskForm}
+            task={editingTask}
             project={activeProject}
             users={users}
             pages={pages}
-            selectedPageId={pages && pages.length > 0 ? pages[0].id : undefined}
+            selectedPageId={editingTask?.page?.id || (pages && pages.length > 0 ? pages[0].id : undefined)}
           />
         )}
       </Box>
